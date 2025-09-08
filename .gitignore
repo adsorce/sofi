@@ -1,0 +1,17 @@
+# Build directories
+build/
+builddir/
+
+# Cache files
+.cache/
+
+# Compiled files
+*.o
+*.so
+
+# Editor files
+*.swp
+*~
+
+# Debug files
+*.log
