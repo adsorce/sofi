@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 #include "files.h"
 #include "drun.h"
@@ -152,9 +153,40 @@ static char *generate_file_list() {
         snprintf(path, sizeof(path), "%s/Videos", home);
         scan_directory_to_buffer(path, tmp, 0, &count);
         
-        /* Scan home directory */
+        /* Scan home directory root level only to avoid duplicates with subdirs already scanned */
         if (count < 4000) {
-            scan_directory_to_buffer(home, tmp, 0, &count);
+            DIR *dir = opendir(home);
+            if (dir != NULL) {
+                struct dirent *entry;
+                while ((entry = readdir(dir)) != NULL && count < 5000) {
+                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                        continue;
+                    }
+                    
+                    /* Skip directories we already scanned */
+                    if (strcmp(entry->d_name, "Documents") == 0 || 
+                        strcmp(entry->d_name, "Downloads") == 0 ||
+                        strcmp(entry->d_name, "Desktop") == 0 ||
+                        strcmp(entry->d_name, "Pictures") == 0 ||
+                        strcmp(entry->d_name, "Videos") == 0) {
+                        continue;
+                    }
+                    
+                    char full_path[PATH_MAX];
+                    snprintf(full_path, sizeof(full_path), "%s/%s", home, entry->d_name);
+                    
+                    struct stat st;
+                    if (stat(full_path, &st) == -1) continue;
+                    
+                    if (S_ISREG(st.st_mode)) {
+                        fprintf(tmp, "%s|||%s\n", entry->d_name, full_path);
+                        count++;
+                    } else if (S_ISDIR(st.st_mode)) {
+                        scan_directory_to_buffer(full_path, tmp, 0, &count);
+                    }
+                }
+                closedir(dir);
+            }
         }
     }
     
@@ -175,6 +207,40 @@ static char *generate_file_list() {
     return buffer;
 }
 
+static bool should_refresh_cache(const char *cache_path) {
+    struct stat cache_stat;
+    if (stat(cache_path, &cache_stat) != 0) {
+        return true; /* Cache doesn't exist */
+    }
+    
+    time_t now = time(NULL);
+    time_t cache_age = now - cache_stat.st_mtime;
+    
+    /* Refresh if cache is older than 1 hour (3600 seconds) */
+    if (cache_age > 3600) {
+        log_debug("Cache is %ld seconds old, refreshing.\n", cache_age);
+        return true;
+    }
+    
+    /* Check if key directories are newer than cache */
+    const char *home = getenv("HOME");
+    if (home != NULL) {
+        char path[PATH_MAX];
+        const char *dirs[] = {"Documents", "Downloads", "Desktop", "Pictures", "Videos", NULL};
+        
+        for (int i = 0; dirs[i] != NULL; i++) {
+            snprintf(path, sizeof(path), "%s/%s", home, dirs[i]);
+            struct stat dir_stat;
+            if (stat(path, &dir_stat) == 0 && dir_stat.st_mtime > cache_stat.st_mtime) {
+                log_debug("Directory %s is newer than cache, refreshing.\n", path);
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 char *files_generate_cached() {
     char *cache_path = get_cache_path();
     
@@ -183,28 +249,31 @@ char *files_generate_cached() {
         return generate_file_list();
     }
     
-    /* Try to read from cache */
-    FILE *cache = fopen(cache_path, "r");
-    if (cache != NULL) {
-        fseek(cache, 0, SEEK_END);
-        long size = ftell(cache);
-        fseek(cache, 0, SEEK_SET);
-        
-        char *buffer = xmalloc(size + 1);
-        fread(buffer, 1, size, cache);
-        buffer[size] = '\0';
-        
-        fclose(cache);
-        
-        /* Count apps in cached data */
-        struct desktop_vec apps = drun_generate_cached();
-        cached_app_count = apps.count;
-        desktop_vec_destroy(&apps);
-        
-        free(cache_path);
-        
-        log_debug("Loaded files from cache with %d apps.\n", cached_app_count);
-        return buffer;
+    /* Check if we should refresh the cache */
+    if (!should_refresh_cache(cache_path)) {
+        /* Try to read from cache */
+        FILE *cache = fopen(cache_path, "r");
+        if (cache != NULL) {
+            fseek(cache, 0, SEEK_END);
+            long size = ftell(cache);
+            fseek(cache, 0, SEEK_SET);
+            
+            char *buffer = xmalloc(size + 1);
+            fread(buffer, 1, size, cache);
+            buffer[size] = '\0';
+            
+            fclose(cache);
+            
+            /* Count apps in cached data */
+            struct desktop_vec apps = drun_generate_cached();
+            cached_app_count = apps.count;
+            desktop_vec_destroy(&apps);
+            
+            free(cache_path);
+            
+            log_debug("Loaded files from cache with %d apps.\n", cached_app_count);
+            return buffer;
+        }
     }
     
     /* Generate new list */
@@ -220,7 +289,7 @@ char *files_generate_cached() {
     }
     free(dir);
     
-    cache = fopen(cache_path, "w");
+    FILE *cache = fopen(cache_path, "w");
     if (cache != NULL) {
         fputs(buffer, cache);
         fclose(cache);
