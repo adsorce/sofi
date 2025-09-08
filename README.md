@@ -1,12 +1,12 @@
 # Sorce
 
-An extremely fast and simple [dmenu](https://tools.suckless.org/dmenu/) /
+A unified app and file launcher for Wayland - an extremely fast [dmenu](https://tools.suckless.org/dmenu/) /
 [rofi](https://github.com/davatorium/rofi) replacement for
 [wlroots](https://gitlab.freedesktop.org/wlroots/wlroots)-based
 [Wayland](https://wayland.freedesktop.org/) compositors such as
-[Sway](https://github.com/swaywm/sway/).
+[Sway](https://github.com/swaywm/sway/) and [Niri](https://github.com/YaLTeR/niri).
 
-The aim is to do just what I want it to as quick as possible.
+Sorce extends the original tofi launcher with unified search capabilities, allowing you to search and launch both applications and files from a single interface.
 
 When [configured correctly](#performance), sorce can get on screen within a
 single frame.
@@ -25,7 +25,20 @@ single frame.
   * [Where is the time spent?](#where-is-the-time-spent)
 
 ## Install
-### Building
+
+### Quick Install (Arch Linux)
+
+The easiest way to install Sorce on Arch-based systems:
+
+```bash
+git clone https://github.com/adsorce/sorce.git
+cd sorce
+./install.sh
+```
+
+This will automatically install dependencies, build, and install Sorce system-wide.
+
+### Manual Building
 
 Install the necessary dependencies.
 
