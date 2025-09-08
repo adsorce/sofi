@@ -27,7 +27,7 @@ struct output_list_element {
 	int32_t transform;
 };
 
-struct sorce {
+struct sofi {
 	/* Wayland globals */
 	struct wl_display *wl_display;
 	struct wl_registry *wl_registry;

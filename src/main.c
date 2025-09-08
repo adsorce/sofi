@@ -13,7 +13,7 @@
 #include <wayland-client.h>
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
-#include "sorce.h"
+#include "sofi.h"
 #include "compgen.h"
 #include "drun.h"
 #include "files.h"
@@ -93,7 +93,7 @@ static void zwlr_layer_surface_configure(
 		uint32_t width,
 		uint32_t height)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	if (width == 0 || height == 0) {
 		/* Compositor is deferring to us, so don't do anything. */
 		log_debug("Layer surface configure with no width or height.\n");
@@ -106,16 +106,16 @@ static void zwlr_layer_surface_configure(
 	 * We want actual pixel width / height, so we have to scale the
 	 * values provided by Wayland.
 	 */
-	if (sorce->window.fractional_scale != 0) {
-		sorce->window.surface.width = scale_apply(width, sorce->window.fractional_scale);
-		sorce->window.surface.height = scale_apply(height, sorce->window.fractional_scale);
+	if (sofi->window.fractional_scale != 0) {
+		sofi->window.surface.width = scale_apply(width, sofi->window.fractional_scale);
+		sofi->window.surface.height = scale_apply(height, sofi->window.fractional_scale);
 	} else {
-		sorce->window.surface.width = width * sorce->window.scale;
-		sorce->window.surface.height = height * sorce->window.scale;
+		sofi->window.surface.width = width * sofi->window.scale;
+		sofi->window.surface.height = height * sofi->window.scale;
 	}
 
 	zwlr_layer_surface_v1_ack_configure(
-			sorce->window.zwlr_layer_surface,
+			sofi->window.zwlr_layer_surface,
 			serial);
 }
 
@@ -123,8 +123,8 @@ static void zwlr_layer_surface_close(
 		void *data,
 		struct zwlr_layer_surface_v1 *zwlr_layer_surface)
 {
-	struct sorce *sorce = data;
-	sorce->closed = true;
+	struct sofi *sofi = data;
+	sofi->closed = true;
 	log_debug("Layer surface close.\n");
 }
 
@@ -140,19 +140,19 @@ static void wl_keyboard_keymap(
 		int32_t fd,
 		uint32_t size)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	assert(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1);
 
 	char *map_shm = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	assert(map_shm != MAP_FAILED);
 
-	if (sorce->late_keyboard_init) {
+	if (sofi->late_keyboard_init) {
 		log_debug("Delaying keyboard configuration.\n");
-		sorce->xkb_keymap_string = xstrdup(map_shm);
+		sofi->xkb_keymap_string = xstrdup(map_shm);
 	} else {
 		log_debug("Configuring keyboard.\n");
 		struct xkb_keymap *xkb_keymap = xkb_keymap_new_from_string(
-				sorce->xkb_context,
+				sofi->xkb_context,
 				map_shm,
 				XKB_KEYMAP_FORMAT_TEXT_V1,
 				XKB_KEYMAP_COMPILE_NO_FLAGS);
@@ -160,10 +160,10 @@ static void wl_keyboard_keymap(
 		close(fd);
 
 		struct xkb_state *xkb_state = xkb_state_new(xkb_keymap);
-		xkb_keymap_unref(sorce->xkb_keymap);
-		xkb_state_unref(sorce->xkb_state);
-		sorce->xkb_keymap = xkb_keymap;
-		sorce->xkb_state = xkb_state;
+		xkb_keymap_unref(sofi->xkb_keymap);
+		xkb_state_unref(sofi->xkb_state);
+		sofi->xkb_keymap = xkb_keymap;
+		sofi->xkb_state = xkb_state;
 		log_debug("Keyboard configured.\n");
 	}
 	munmap(map_shm, size);
@@ -197,7 +197,7 @@ static void wl_keyboard_key(
 		uint32_t key,
 		uint32_t state)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 
 	/*
 	 * If this wasn't a keypress (i.e. was a key release), just update key
@@ -205,21 +205,21 @@ static void wl_keyboard_key(
 	 */
 	uint32_t keycode = key + 8;
 	if (state != WL_KEYBOARD_KEY_STATE_PRESSED) {
-		if (keycode == sorce->repeat.keycode) {
-			sorce->repeat.active = false;
+		if (keycode == sofi->repeat.keycode) {
+			sofi->repeat.active = false;
 		} else {
-			sorce->repeat.next = gettime_ms() + sorce->repeat.delay;
+			sofi->repeat.next = gettime_ms() + sofi->repeat.delay;
 		}
 		return;
 	}
 
 	/* A rate of 0 disables key repeat */
-	if (xkb_keymap_key_repeats(sorce->xkb_keymap, keycode) && sorce->repeat.rate != 0) {
-		sorce->repeat.active = true;
-		sorce->repeat.keycode = keycode;
-		sorce->repeat.next = gettime_ms() + sorce->repeat.delay;
+	if (xkb_keymap_key_repeats(sofi->xkb_keymap, keycode) && sofi->repeat.rate != 0) {
+		sofi->repeat.active = true;
+		sofi->repeat.keycode = keycode;
+		sofi->repeat.next = gettime_ms() + sofi->repeat.delay;
 	}
-	input_handle_keypress(sorce, keycode);
+	input_handle_keypress(sofi, keycode);
 }
 
 static void wl_keyboard_modifiers(
@@ -231,12 +231,12 @@ static void wl_keyboard_modifiers(
 		uint32_t mods_locked,
 		uint32_t group)
 {
-	struct sorce *sorce = data;
-	if (sorce->xkb_state == NULL) {
+	struct sofi *sofi = data;
+	if (sofi->xkb_state == NULL) {
 		return;
 	}
 	xkb_state_update_mask(
-			sorce->xkb_state,
+			sofi->xkb_state,
 			mods_depressed,
 			mods_latched,
 			mods_locked,
@@ -251,9 +251,9 @@ static void wl_keyboard_repeat_info(
 		int32_t rate,
 		int32_t delay)
 {
-	struct sorce *sorce = data;
-	sorce->repeat.rate = rate;
-	sorce->repeat.delay = delay;
+	struct sofi *sofi = data;
+	sofi->repeat.rate = rate;
+	sofi->repeat.delay = delay;
 	if (rate > 0) {
 		log_debug("Key repeat every %u ms after %u ms.\n",
 				1000 / rate,
@@ -280,10 +280,10 @@ static void wl_pointer_enter(
 		wl_fixed_t surface_x,
 		wl_fixed_t surface_y)
 {
-	struct sorce *sorce = data;
-	if (sorce->hide_cursor) {
+	struct sofi *sofi = data;
+	if (sofi->hide_cursor) {
 		/* Hide the cursor by setting its surface to NULL. */
-		wl_pointer_set_cursor(sorce->wl_pointer, serial, NULL, 0, 0);
+		wl_pointer_set_cursor(sofi->wl_pointer, serial, NULL, 0, 0);
 	}
 }
 
@@ -375,34 +375,34 @@ static void wl_seat_capabilities(
 		struct wl_seat *wl_seat,
 		uint32_t capabilities)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 
 	bool have_keyboard = capabilities & WL_SEAT_CAPABILITY_KEYBOARD;
 	bool have_pointer = capabilities & WL_SEAT_CAPABILITY_POINTER;
 
-	if (have_keyboard && sorce->wl_keyboard == NULL) {
-		sorce->wl_keyboard = wl_seat_get_keyboard(sorce->wl_seat);
+	if (have_keyboard && sofi->wl_keyboard == NULL) {
+		sofi->wl_keyboard = wl_seat_get_keyboard(sofi->wl_seat);
 		wl_keyboard_add_listener(
-				sorce->wl_keyboard,
+				sofi->wl_keyboard,
 				&wl_keyboard_listener,
-				sorce);
+				sofi);
 		log_debug("Got keyboard from seat.\n");
-	} else if (!have_keyboard && sorce->wl_keyboard != NULL) {
-		wl_keyboard_release(sorce->wl_keyboard);
-		sorce->wl_keyboard = NULL;
+	} else if (!have_keyboard && sofi->wl_keyboard != NULL) {
+		wl_keyboard_release(sofi->wl_keyboard);
+		sofi->wl_keyboard = NULL;
 		log_debug("Released keyboard.\n");
 	}
 
-	if (have_pointer && sorce->wl_pointer == NULL) {
-		sorce->wl_pointer = wl_seat_get_pointer(sorce->wl_seat);
+	if (have_pointer && sofi->wl_pointer == NULL) {
+		sofi->wl_pointer = wl_seat_get_pointer(sofi->wl_seat);
 		wl_pointer_add_listener(
-				sorce->wl_pointer,
+				sofi->wl_pointer,
 				&wl_pointer_listener,
-				sorce);
+				sofi);
 		log_debug("Got pointer from seat.\n");
-	} else if (!have_pointer && sorce->wl_pointer != NULL) {
-		wl_pointer_release(sorce->wl_pointer);
-		sorce->wl_pointer = NULL;
+	} else if (!have_pointer && sofi->wl_pointer != NULL) {
+		wl_pointer_release(sofi->wl_pointer);
+		sofi->wl_pointer = NULL;
 		log_debug("Released pointer.\n");
 	}
 }
@@ -546,9 +546,9 @@ static void output_geometry(
 		const char *model,
 		int32_t transform)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	struct output_list_element *el;
-	wl_list_for_each(el, &sorce->output_list, link) {
+	wl_list_for_each(el, &sofi->output_list, link) {
 		if (el->wl_output == wl_output) {
 			el->transform = transform;
 		}
@@ -563,9 +563,9 @@ static void output_mode(
 		int32_t height,
 		int32_t refresh)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	struct output_list_element *el;
-	wl_list_for_each(el, &sorce->output_list, link) {
+	wl_list_for_each(el, &sofi->output_list, link) {
 		if (el->wl_output == wl_output) {
 			if (flags & WL_OUTPUT_MODE_CURRENT) {
 				el->width = width;
@@ -580,9 +580,9 @@ static void output_scale(
 		struct wl_output *wl_output,
 		int32_t factor)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	struct output_list_element *el;
-	wl_list_for_each(el, &sorce->output_list, link) {
+	wl_list_for_each(el, &sofi->output_list, link) {
 		if (el->wl_output == wl_output) {
 			el->scale = factor;
 		}
@@ -594,9 +594,9 @@ static void output_name(
 		struct wl_output *wl_output,
 		const char *name)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	struct output_list_element *el;
-	wl_list_for_each(el, &sorce->output_list, link) {
+	wl_list_for_each(el, &sofi->output_list, link) {
 		if (el->wl_output == wl_output) {
 			el->name = xstrdup(name);
 		}
@@ -634,25 +634,25 @@ static void registry_global(
 		const char *interface,
 		uint32_t version)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	//log_debug("Registry %u: %s v%u.\n", name, interface, version);
 	if (!strcmp(interface, wl_compositor_interface.name)) {
-		sorce->wl_compositor = wl_registry_bind(
+		sofi->wl_compositor = wl_registry_bind(
 				wl_registry,
 				name,
 				&wl_compositor_interface,
 				4);
 		log_debug("Bound to compositor %u.\n", name);
 	} else if (!strcmp(interface, wl_seat_interface.name)) {
-		sorce->wl_seat = wl_registry_bind(
+		sofi->wl_seat = wl_registry_bind(
 				wl_registry,
 				name,
 				&wl_seat_interface,
 				7);
 		wl_seat_add_listener(
-				sorce->wl_seat,
+				sofi->wl_seat,
 				&wl_seat_listener,
-				sorce);
+				sofi);
 		log_debug("Bound to seat %u.\n", name);
 	} else if (!strcmp(interface, wl_output_interface.name)) {
 		struct output_list_element *el = xmalloc(sizeof(*el));
@@ -671,18 +671,18 @@ static void registry_global(
 		wl_output_add_listener(
 				el->wl_output,
 				&wl_output_listener,
-				sorce);
-		wl_list_insert(&sorce->output_list, &el->link);
+				sofi);
+		wl_list_insert(&sofi->output_list, &el->link);
 		log_debug("Bound to output %u.\n", name);
 	} else if (!strcmp(interface, wl_shm_interface.name)) {
-		sorce->wl_shm = wl_registry_bind(
+		sofi->wl_shm = wl_registry_bind(
 				wl_registry,
 				name,
 				&wl_shm_interface,
 				1);
 		log_debug("Bound to shm %u.\n", name);
 	} else if (!strcmp(interface, wl_data_device_manager_interface.name)) {
-		sorce->wl_data_device_manager = wl_registry_bind(
+		sofi->wl_data_device_manager = wl_registry_bind(
 				wl_registry,
 				name,
 				&wl_data_device_manager_interface,
@@ -695,21 +695,21 @@ static void registry_global(
 		} else {
 			version = 3;
 		}
-		sorce->zwlr_layer_shell = wl_registry_bind(
+		sofi->zwlr_layer_shell = wl_registry_bind(
 				wl_registry,
 				name,
 				&zwlr_layer_shell_v1_interface,
 				version);
 		log_debug("Bound to zwlr_layer_shell_v1 %u.\n", name);
 	} else if (!strcmp(interface, wp_viewporter_interface.name)) {
-		sorce->wp_viewporter = wl_registry_bind(
+		sofi->wp_viewporter = wl_registry_bind(
 				wl_registry,
 				name,
 				&wp_viewporter_interface,
 				1);
 		log_debug("Bound to wp_viewporter %u.\n", name);
 	} else if (!strcmp(interface, wp_fractional_scale_manager_v1_interface.name)) {
-		sorce->wp_fractional_scale_manager = wl_registry_bind(
+		sofi->wp_fractional_scale_manager = wl_registry_bind(
 				wl_registry,
 				name,
 				&wp_fractional_scale_manager_v1_interface,
@@ -784,8 +784,8 @@ static void dummy_fractional_scale_preferred_scale(
 		struct wp_fractional_scale_v1 *wp_fractional_scale,
 		uint32_t scale)
 {
-	struct sorce *sorce = data;
-	sorce->window.fractional_scale = scale;
+	struct sofi *sofi = data;
+	sofi->window.fractional_scale = scale;
 }
 
 static const struct wp_fractional_scale_v1_listener dummy_fractional_scale_listener = {
@@ -797,11 +797,11 @@ static void dummy_surface_enter(
 		struct wl_surface *wl_surface,
 		struct wl_output *wl_output)
 {
-	struct sorce *sorce = data;
+	struct sofi *sofi = data;
 	struct output_list_element *el;
-	wl_list_for_each(el, &sorce->output_list, link) {
+	wl_list_for_each(el, &sofi->output_list, link) {
 		if (el->wl_output == wl_output) {
-			sorce->default_output = el;
+			sofi->default_output = el;
 			break;
 		}
 	}
@@ -824,7 +824,7 @@ static const struct wl_surface_listener dummy_surface_listener = {
 static void usage(bool err)
 {
 	fprintf(err ? stderr : stdout, "%s",
-"Usage: sorce [options]\n"
+"Usage: sofi [options]\n"
 "\n"
 "Basic options:\n"
 "  -h, --help                           Print this message and exit.\n"
@@ -836,7 +836,7 @@ static void usage(bool err)
 "      --anchor <position>              Location on screen to anchor window.\n"
 "      --horizontal <true|false>        List results horizontally.\n"
 "\n"
-"All options listed in \"man 5 sorce\" are also accpted in the form \"--key=value\".\n"
+"All options listed in \"man 5 sofi\" are also accpted in the form \"--key=value\".\n"
 	);
 }
 
@@ -932,7 +932,7 @@ const struct option long_options[] = {
 };
 const char *short_options = ":hc:";
 
-static void parse_args(struct sorce *sorce, int argc, char *argv[])
+static void parse_args(struct sofi *sofi, int argc, char *argv[])
 {
 
 	bool load_default_config = true;
@@ -949,7 +949,7 @@ static void parse_args(struct sorce *sorce, int argc, char *argv[])
 			usage(false);
 			exit(EXIT_SUCCESS);
 		} else if (opt == 'c') {
-			config_load(sorce, optarg);
+			config_load(sofi, optarg);
 			load_default_config = false;
 		} else if (opt == ':') {
 			log_error("Option %s requires an argument.\n", argv[optind - 1]);
@@ -967,7 +967,7 @@ static void parse_args(struct sorce *sorce, int argc, char *argv[])
 		opt = getopt_long(argc, argv, short_options, long_options, &option_index);
 	}
 	if (load_default_config) {
-		config_load(sorce, NULL);
+		config_load(sofi, NULL);
 	}
 
 	/* Second pass, parse everything else. */
@@ -975,7 +975,7 @@ static void parse_args(struct sorce *sorce, int argc, char *argv[])
 	opt = getopt_long(argc, argv, short_options, long_options, &option_index);
 	while (opt != -1) {
 		if (opt == 0) {
-			if (!config_apply(sorce, long_options[option_index].name, optarg)) {
+			if (!config_apply(sofi, long_options[option_index].name, optarg)) {
 				exit(EXIT_FAILURE);
 			}
 		} else if (opt == 'k') {
@@ -984,11 +984,11 @@ static void parse_args(struct sorce *sorce, int argc, char *argv[])
 			 * taking an argument.
 			 */
 			if (optarg) {
-				if (!config_apply(sorce, long_options[option_index].name, optarg)) {
+				if (!config_apply(sofi, long_options[option_index].name, optarg)) {
 					exit(EXIT_FAILURE);
 				}
 			} else {
-				sorce->late_keyboard_init = true;
+				sofi->late_keyboard_init = true;
 			}
 		}
 		opt = getopt_long(argc, argv, short_options, long_options, &option_index);
@@ -1001,15 +1001,15 @@ static void parse_args(struct sorce *sorce, int argc, char *argv[])
 	}
 }
 
-static bool do_submit(struct sorce *sorce)
+static bool do_submit(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 	uint32_t selection = entry->selection + entry->first_result;
 	char *res = entry->results.buf[selection].string;
 
-	if (sorce->window.entry.results.count == 0) {
+	if (sofi->window.entry.results.count == 0) {
 		/* Always require a match in drun and files modes. */
-		if (sorce->require_match || entry->mode == TOFI_MODE_DRUN || entry->mode == TOFI_MODE_FILES) {
+		if (sofi->require_match || entry->mode == TOFI_MODE_DRUN || entry->mode == TOFI_MODE_FILES) {
 			return false;
 		} else {
 			printf("%s\n", entry->input_utf8);
@@ -1038,13 +1038,13 @@ static bool do_submit(struct sorce *sorce)
 			return false;
 		}
 		char *path = app->path;
-		if (sorce->drun_launch) {
+		if (sofi->drun_launch) {
 			drun_launch(path);
 		} else {
-			drun_print(path, sorce->default_terminal);
+			drun_print(path, sofi->default_terminal);
 		}
 	} else {
-		if (entry->mode == TOFI_MODE_PLAIN && sorce->print_index) {
+		if (entry->mode == TOFI_MODE_PLAIN && sofi->print_index) {
 			for (size_t i = 0; i < entry->commands.count; i++) {
 				if (res == entry->commands.buf[i].string) {
 					printf("%zu\n", i + 1);
@@ -1055,22 +1055,22 @@ static bool do_submit(struct sorce *sorce)
 			printf("%s\n", res);
 		}
 	}
-	if (sorce->use_history) {
+	if (sofi->use_history) {
 		history_add(
 				&entry->history,
 				entry->results.buf[selection].string);
-		if (sorce->history_file[0] == 0) {
+		if (sofi->history_file[0] == 0) {
 			history_save_default_file(&entry->history, entry->mode == TOFI_MODE_DRUN);
 		} else {
-			history_save(&entry->history, sorce->history_file);
+			history_save(&entry->history, sofi->history_file);
 		}
 	}
 	return true;
 }
 
-static void read_clipboard(struct sorce *sorce)
+static void read_clipboard(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	/* Make a copy of any text after the cursor. */
 	uint32_t *end_text = NULL;
@@ -1092,7 +1092,7 @@ static void read_clipboard(struct sorce *sorce)
 			 * Read input 1 byte at a time. This is slow, but easy,
 			 * and speed of pasting shouldn't really matter.
 			 */
-			int res = read(sorce->clipboard.fd, &buffer[i], 1);
+			int res = read(sofi->clipboard.fd, &buffer[i], 1);
 			if (res == 0) {
 				eof = true;
 				break;
@@ -1108,12 +1108,12 @@ static void read_clipboard(struct sorce *sorce)
 					 * a character, but we should hit the
 					 * input length limit long before that.
 					 */
-					input_refresh_results(sorce);
-					sorce->window.surface.redraw = true;
+					input_refresh_results(sofi);
+					sofi->window.surface.redraw = true;
 					return;
 				}
 				log_error("Failed to read clipboard: %s\n", strerror(errno));
-				clipboard_finish_paste(&sorce->clipboard);
+				clipboard_finish_paste(&sofi->clipboard);
 				return;
 			}
 			uint32_t unichar = utf8_to_utf32_validate(buffer);
@@ -1149,16 +1149,16 @@ static void read_clipboard(struct sorce *sorce)
 	}
 	entry->input_utf32[MIN(entry->input_utf32_length, N_ELEM(entry->input_utf32) - 1)] = U'\0';
 
-	clipboard_finish_paste(&sorce->clipboard);
+	clipboard_finish_paste(&sofi->clipboard);
 
-	input_refresh_results(sorce);
-	sorce->window.surface.redraw = true;
+	input_refresh_results(sofi);
+	sofi->window.surface.redraw = true;
 }
 
 int main(int argc, char *argv[])
 {
 	/* Call log_debug to initialise the timers we use for perf checking. */
-	log_debug("This is sorce.\n");
+	log_debug("This is sofi.\n");
 
 	/*
 	 * Set the locale to the user's default, so we can deal with non-ASCII
@@ -1167,7 +1167,7 @@ int main(int argc, char *argv[])
 	setlocale(LC_ALL, "");
 
 	/* Default options. */
-	struct sorce sorce = {
+	struct sofi sofi = {
 		.window = {
 			.scale = 1,
 			.width = 1280,
@@ -1205,20 +1205,20 @@ int main(int argc, char *argv[])
 		.use_scale = true,
 		.physical_keybindings = true,
 	};
-	wl_list_init(&sorce.output_list);
+	wl_list_init(&sofi.output_list);
 	if (getenv("TERMINAL") != NULL) {
 		snprintf(
-				sorce.default_terminal,
-				N_ELEM(sorce.default_terminal),
+				sofi.default_terminal,
+				N_ELEM(sofi.default_terminal),
 				"%s",
 				getenv("TERMINAL"));
 	}
 
-	parse_args(&sorce, argc, argv);
+	parse_args(&sofi, argc, argv);
 	log_debug("Config done.\n");
 
-	if (!sorce.multiple_instance && lock_check()) {
-		log_error("Another instance of sorce is already running.\n");
+	if (!sofi.multiple_instance && lock_check()) {
+		log_error("Another instance of sofi is already running.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1230,24 +1230,24 @@ int main(int argc, char *argv[])
 	 */
 
 	log_debug("Connecting to Wayland display.\n");
-	sorce.wl_display = wl_display_connect(NULL);
-	if (sorce.wl_display == NULL) {
+	sofi.wl_display = wl_display_connect(NULL);
+	if (sofi.wl_display == NULL) {
 		log_error("Couldn't connect to Wayland display.\n");
 		exit(EXIT_FAILURE);
 	}
-	sorce.wl_registry = wl_display_get_registry(sorce.wl_display);
-	if (!sorce.late_keyboard_init) {
+	sofi.wl_registry = wl_display_get_registry(sofi.wl_display);
+	if (!sofi.late_keyboard_init) {
 		log_debug("Creating xkb context.\n");
-		sorce.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-		if (sorce.xkb_context == NULL) {
+		sofi.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+		if (sofi.xkb_context == NULL) {
 			log_error("Couldn't create an XKB context.\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 	wl_registry_add_listener(
-			sorce.wl_registry,
+			sofi.wl_registry,
 			&wl_registry_listener,
-			&sorce);
+			&sofi);
 
 	/*
 	 * After this first roundtrip, the only thing that should have happened
@@ -1256,7 +1256,7 @@ int main(int argc, char *argv[])
 	 */
 	log_debug("First roundtrip start.\n");
 	log_indent();
-	wl_display_roundtrip(sorce.wl_display);
+	wl_display_roundtrip(sofi.wl_display);
 	log_unindent();
 	log_debug("First roundtrip done.\n");
 
@@ -1267,7 +1267,7 @@ int main(int argc, char *argv[])
 	 */
 	log_debug("Second roundtrip start.\n");
 	log_indent();
-	wl_display_roundtrip(sorce.wl_display);
+	wl_display_roundtrip(sofi.wl_display);
 	log_unindent();
 	log_debug("Second roundtrip done.\n");
 
@@ -1286,9 +1286,9 @@ int main(int argc, char *argv[])
 		 * a surface and displaying it.
 		 *
 		 * Here we set up a single pixel surface, perform the required
-		 * two roundtrips, then tear it down. sorce.default_output
+		 * two roundtrips, then tear it down. sofi.default_output
 		 * should then contain the output our surface was assigned to,
-		 * and sorce.window.fractional_scale should have the scale
+		 * and sofi.window.fractional_scale should have the scale
 		 * factor.
 		 */
 		log_debug("Determining output.\n");
@@ -1298,22 +1298,22 @@ int main(int argc, char *argv[])
 			.height = 1
 		};
 		surface.wl_surface =
-			wl_compositor_create_surface(sorce.wl_compositor);
+			wl_compositor_create_surface(sofi.wl_compositor);
 		wl_surface_add_listener(
 				surface.wl_surface,
 				&dummy_surface_listener,
-				&sorce);
+				&sofi);
 
 		struct wp_fractional_scale_v1 *wp_fractional_scale = NULL;
-		if (sorce.wp_fractional_scale_manager != NULL) {
+		if (sofi.wp_fractional_scale_manager != NULL) {
 			wp_fractional_scale =
 				wp_fractional_scale_manager_v1_get_fractional_scale(
-						sorce.wp_fractional_scale_manager,
+						sofi.wp_fractional_scale_manager,
 						surface.wl_surface);
 			wp_fractional_scale_v1_add_listener(
 					wp_fractional_scale,
 					&dummy_fractional_scale_listener,
-					&sorce);
+					&sofi);
 		}
 
 		/*
@@ -1321,10 +1321,10 @@ int main(int argc, char *argv[])
 		 * can determine the correct fractional scale.
 		 */
 		struct wl_output *wl_output = NULL;
-		if (sorce.target_output_name[0] != '\0') {
+		if (sofi.target_output_name[0] != '\0') {
 			struct output_list_element *el;
-			wl_list_for_each(el, &sorce.output_list, link) {
-				if (!strcmp(sorce.target_output_name, el->name)) {
+			wl_list_for_each(el, &sofi.output_list, link) {
+				if (!strcmp(sofi.target_output_name, el->name)) {
 					wl_output = el->wl_output;
 					break;
 				}
@@ -1333,7 +1333,7 @@ int main(int argc, char *argv[])
 
 		struct zwlr_layer_surface_v1 *zwlr_layer_surface =
 			zwlr_layer_shell_v1_get_layer_surface(
-					sorce.zwlr_layer_shell,
+					sofi.zwlr_layer_shell,
 					surface.wl_surface,
 					wl_output,
 					ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND,
@@ -1349,7 +1349,7 @@ int main(int argc, char *argv[])
 		zwlr_layer_surface_v1_add_listener(
 				zwlr_layer_surface,
 				&dummy_layer_surface_listener,
-				&sorce);
+				&sofi);
 		zwlr_layer_surface_v1_set_size(
 				zwlr_layer_surface,
 				1,
@@ -1357,18 +1357,18 @@ int main(int argc, char *argv[])
 		wl_surface_commit(surface.wl_surface);
 		log_debug("First dummy roundtrip start.\n");
 		log_indent();
-		wl_display_roundtrip(sorce.wl_display);
+		wl_display_roundtrip(sofi.wl_display);
 		log_unindent();
 		log_debug("First dummy roundtrip done.\n");
 		log_debug("Initialising dummy surface.\n");
 		log_indent();
-		surface_init(&surface, sorce.wl_shm);
+		surface_init(&surface, sofi.wl_shm);
 		surface_draw(&surface);
 		log_unindent();
 		log_debug("Dummy surface initialised.\n");
 		log_debug("Second dummy roundtrip start.\n");
 		log_indent();
-		wl_display_roundtrip(sorce.wl_display);
+		wl_display_roundtrip(sofi.wl_display);
 		log_unindent();
 		log_debug("Second dummy roundtrip done.\n");
 		surface_destroy(&surface);
@@ -1385,23 +1385,23 @@ int main(int argc, char *argv[])
 		 */
 		bool found_target = false;
 		struct output_list_element *head;
-		head = wl_container_of(sorce.output_list.next, head, link);
+		head = wl_container_of(sofi.output_list.next, head, link);
 
 		struct output_list_element *el;
 		struct output_list_element *tmp;
-		if (sorce.target_output_name[0] != 0) {
-			log_debug("Looking for output %s.\n", sorce.target_output_name);
-		} else if (sorce.default_output != NULL) {
+		if (sofi.target_output_name[0] != 0) {
+			log_debug("Looking for output %s.\n", sofi.target_output_name);
+		} else if (sofi.default_output != NULL) {
 			snprintf(
-					sorce.target_output_name,
-					N_ELEM(sorce.target_output_name),
+					sofi.target_output_name,
+					N_ELEM(sofi.target_output_name),
 					"%s",
-					sorce.default_output->name);
+					sofi.default_output->name);
 			/* We don't need this anymore. */
-			sorce.default_output = NULL;
+			sofi.default_output = NULL;
 		}
-		wl_list_for_each_reverse_safe(el, tmp, &sorce.output_list, link) {
-			if (!strcmp(sorce.target_output_name, el->name)) {
+		wl_list_for_each_reverse_safe(el, tmp, &sofi.output_list, link) {
+			if (!strcmp(sofi.target_output_name, el->name)) {
 				found_target = true;
 				continue;
 			}
@@ -1422,7 +1422,7 @@ int main(int argc, char *argv[])
 		 * The only output left should either be the one we want, or
 		 * the first that was advertised.
 		 */
-		el = wl_container_of(sorce.output_list.next, el, link);
+		el = wl_container_of(sofi.output_list.next, el, link);
 
 		/*
 		 * If we're rotated 90 degrees, we need to swap width and
@@ -1433,15 +1433,15 @@ int main(int argc, char *argv[])
 			case WL_OUTPUT_TRANSFORM_270:
 			case WL_OUTPUT_TRANSFORM_FLIPPED_90:
 			case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-				sorce.output_width = el->height;
-				sorce.output_height = el->width;
+				sofi.output_width = el->height;
+				sofi.output_height = el->width;
 				break;
 			default:
-				sorce.output_width = el->width;
-				sorce.output_height = el->height;
+				sofi.output_width = el->width;
+				sofi.output_height = el->height;
 		}
-		sorce.window.scale = el->scale;
-		sorce.window.transform = el->transform;
+		sofi.window.scale = el->scale;
+		sofi.window.transform = el->transform;
 		log_unindent();
 		log_debug("Selected output %s.\n", el->name);
 	}
@@ -1450,83 +1450,83 @@ int main(int argc, char *argv[])
 	 * We can now scale values and calculate any percentages, as we know
 	 * the output size and scale.
 	 */
-	config_fixup_values(&sorce);
+	config_fixup_values(&sofi);
 
 	/*
-	 * If we were invoked as sorce-run, generate the command list.
-	 * If we were invoked as sorce-drun, generate the desktop app list.
+	 * If we were invoked as sofi-run, generate the command list.
+	 * If we were invoked as sofi-drun, generate the desktop app list.
 	 * Otherwise, just read standard input.
 	 */
 	if (strstr(argv[0], "-run")) {
 		log_debug("Generating command list.\n");
 		log_indent();
-		sorce.window.entry.mode = TOFI_MODE_RUN;
-		sorce.window.entry.command_buffer = compgen_cached();
-		struct string_ref_vec commands = string_ref_vec_from_buffer(sorce.window.entry.command_buffer);
-		if (sorce.use_history) {
-			if (sorce.history_file[0] == 0) {
-				sorce.window.entry.history = history_load_default_file(false);
+		sofi.window.entry.mode = TOFI_MODE_RUN;
+		sofi.window.entry.command_buffer = compgen_cached();
+		struct string_ref_vec commands = string_ref_vec_from_buffer(sofi.window.entry.command_buffer);
+		if (sofi.use_history) {
+			if (sofi.history_file[0] == 0) {
+				sofi.window.entry.history = history_load_default_file(false);
 			} else {
-				sorce.window.entry.history = history_load(sorce.history_file);
+				sofi.window.entry.history = history_load(sofi.history_file);
 			}
-			sorce.window.entry.commands = compgen_history_sort(&commands, &sorce.window.entry.history);
+			sofi.window.entry.commands = compgen_history_sort(&commands, &sofi.window.entry.history);
 			string_ref_vec_destroy(&commands);
 		} else {
-			sorce.window.entry.commands = commands;
+			sofi.window.entry.commands = commands;
 		}
 		log_unindent();
 		log_debug("Command list generated.\n");
 	} else if (strstr(argv[0], "-files")) {
 		log_debug("Generating file list.\n");
 		log_indent();
-		sorce.window.entry.mode = TOFI_MODE_FILES;
-		sorce.window.entry.command_buffer = files_generate_cached();
-		sorce.window.entry.commands = string_ref_vec_from_buffer(sorce.window.entry.command_buffer);
+		sofi.window.entry.mode = TOFI_MODE_FILES;
+		sofi.window.entry.command_buffer = files_generate_cached();
+		sofi.window.entry.commands = string_ref_vec_from_buffer(sofi.window.entry.command_buffer);
 		log_unindent();
-		if (strcmp(sorce.window.entry.prompt_text, "run: ") == 0) {
-			snprintf(sorce.window.entry.prompt_text, N_ELEM(sorce.window.entry.prompt_text), "run: ");
+		if (strcmp(sofi.window.entry.prompt_text, "run: ") == 0) {
+			snprintf(sofi.window.entry.prompt_text, N_ELEM(sofi.window.entry.prompt_text), "run: ");
 		}
 	} else if (strstr(argv[0], "-drun")) {
 		log_debug("Generating desktop app list.\n");
 		log_indent();
-		sorce.window.entry.mode = TOFI_MODE_DRUN;
+		sofi.window.entry.mode = TOFI_MODE_DRUN;
 		struct desktop_vec apps = drun_generate_cached();
-		if (sorce.use_history) {
-			if (sorce.history_file[0] == 0) {
-				sorce.window.entry.history = history_load_default_file(true);
+		if (sofi.use_history) {
+			if (sofi.history_file[0] == 0) {
+				sofi.window.entry.history = history_load_default_file(true);
 			} else {
-				sorce.window.entry.history = history_load(sorce.history_file);
+				sofi.window.entry.history = history_load(sofi.history_file);
 			}
-			drun_history_sort(&apps, &sorce.window.entry.history);
+			drun_history_sort(&apps, &sofi.window.entry.history);
 		}
 		struct string_ref_vec commands = string_ref_vec_create();
 		for (size_t i = 0; i < apps.count; i++) {
 			string_ref_vec_add(&commands, apps.buf[i].name);
 		}
-		sorce.window.entry.commands = commands;
-		sorce.window.entry.apps = apps;
+		sofi.window.entry.commands = commands;
+		sofi.window.entry.apps = apps;
 		log_unindent();
 		log_debug("App list generated.\n");
 	} else {
 		log_debug("Reading stdin.\n");
-		char *buf = read_stdin(!sorce.ascii_input);
-		sorce.window.entry.command_buffer = buf;
-		sorce.window.entry.commands = string_ref_vec_from_buffer(buf);
-		if (sorce.use_history) {
-			if (sorce.history_file[0] == 0) {
-				sorce.use_history = false;
+		char *buf = read_stdin(!sofi.ascii_input);
+		sofi.window.entry.command_buffer = buf;
+		sofi.window.entry.commands = string_ref_vec_from_buffer(buf);
+		if (sofi.use_history) {
+			if (sofi.history_file[0] == 0) {
+				sofi.use_history = false;
 			} else {
-				sorce.window.entry.history = history_load(sorce.history_file);
-				string_ref_vec_history_sort(&sorce.window.entry.commands, &sorce.window.entry.history);
+				sofi.window.entry.history = history_load(sofi.history_file);
+				string_ref_vec_history_sort(&sofi.window.entry.commands, &sofi.window.entry.history);
 			}
 		}
 		log_debug("Result list generated.\n");
 	}
-	sorce.window.entry.results = string_ref_vec_copy(&sorce.window.entry.commands);
+	sofi.window.entry.results = string_ref_vec_copy(&sofi.window.entry.commands);
 
-	if (sorce.auto_accept_single && sorce.window.entry.results.count == 1) {
+	if (sofi.auto_accept_single && sofi.window.entry.results.count == 1) {
 		log_debug("Only one result, exiting.\n");
-		do_submit(&sorce);
+		do_submit(&sofi);
 		return EXIT_SUCCESS;
 	}
 
@@ -1535,13 +1535,13 @@ int main(int argc, char *argv[])
 	 * layer shell role.
 	 */
 	log_debug("Creating main window surface.\n");
-	sorce.window.surface.wl_surface =
-		wl_compositor_create_surface(sorce.wl_compositor);
+	sofi.window.surface.wl_surface =
+		wl_compositor_create_surface(sofi.wl_compositor);
 	wl_surface_add_listener(
-			sorce.window.surface.wl_surface,
+			sofi.window.surface.wl_surface,
 			&wl_surface_listener,
-			&sorce);
-	if (sorce.window.width == 0 || sorce.window.height == 0) {
+			&sofi);
+	if (sofi.window.width == 0 || sofi.window.height == 0) {
 		/*
 		 * Workaround for compatibility with legacy behaviour.
 		 *
@@ -1561,11 +1561,11 @@ int main(int argc, char *argv[])
 		 */
 		log_warning("Width or height set to 0, disabling fractional scaling support.\n");
 		log_warning("If your compositor supports the fractional scale protocol, percentages are preferred.\n");
-		sorce.window.fractional_scale = 0;
+		sofi.window.fractional_scale = 0;
 		wl_surface_set_buffer_scale(
-				sorce.window.surface.wl_surface,
-				sorce.window.scale);
-	} else if (sorce.wp_viewporter == NULL) {
+				sofi.window.surface.wl_surface,
+				sofi.window.scale);
+	} else if (sofi.wp_viewporter == NULL) {
 		/*
 		 * We also could be running on a Wayland compositor which
 		 * doesn't support wp_viewporter, in which case we need to use
@@ -1573,84 +1573,84 @@ int main(int argc, char *argv[])
 		 */
 		log_warning("Using an outdated compositor, "
 				"fractional scaling will not work properly.\n");
-		sorce.window.fractional_scale = 0;
+		sofi.window.fractional_scale = 0;
 		wl_surface_set_buffer_scale(
-				sorce.window.surface.wl_surface,
-				sorce.window.scale);
+				sofi.window.surface.wl_surface,
+				sofi.window.scale);
 	}
 
 	/* Grab the first (and only remaining) output from our list. */
 	struct wl_output *wl_output;
 	{
 		struct output_list_element *el;
-		el = wl_container_of(sorce.output_list.next, el, link);
+		el = wl_container_of(sofi.output_list.next, el, link);
 		wl_output = el->wl_output;
 	}
 
-	sorce.window.zwlr_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-			sorce.zwlr_layer_shell,
-			sorce.window.surface.wl_surface,
+	sofi.window.zwlr_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+			sofi.zwlr_layer_shell,
+			sofi.window.surface.wl_surface,
 			wl_output,
 			ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
 			"launcher");
 	zwlr_layer_surface_v1_set_keyboard_interactivity(
-			sorce.window.zwlr_layer_surface,
+			sofi.window.zwlr_layer_surface,
 			ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE);
 	zwlr_layer_surface_v1_add_listener(
-			sorce.window.zwlr_layer_surface,
+			sofi.window.zwlr_layer_surface,
 			&zwlr_layer_surface_listener,
-			&sorce);
+			&sofi);
 	zwlr_layer_surface_v1_set_anchor(
-			sorce.window.zwlr_layer_surface,
-			sorce.anchor);
+			sofi.window.zwlr_layer_surface,
+			sofi.anchor);
 	zwlr_layer_surface_v1_set_exclusive_zone(
-			sorce.window.zwlr_layer_surface,
-			sorce.window.exclusive_zone);
+			sofi.window.zwlr_layer_surface,
+			sofi.window.exclusive_zone);
 	zwlr_layer_surface_v1_set_margin(
-			sorce.window.zwlr_layer_surface,
-			sorce.window.margin_top,
-			sorce.window.margin_right,
-			sorce.window.margin_bottom,
-			sorce.window.margin_left);
+			sofi.window.zwlr_layer_surface,
+			sofi.window.margin_top,
+			sofi.window.margin_right,
+			sofi.window.margin_bottom,
+			sofi.window.margin_left);
 	/*
 	 * No matter whether we're scaling via Cairo or not, we're presenting a
 	 * scaled buffer to Wayland, so scale the window size here if we
 	 * haven't already done so.
 	 */
 	zwlr_layer_surface_v1_set_size(
-			sorce.window.zwlr_layer_surface,
-			sorce.window.width,
-			sorce.window.height);
+			sofi.window.zwlr_layer_surface,
+			sofi.window.width,
+			sofi.window.height);
 
 	/*
 	 * Set up a viewport for our surface, necessary for fractional scaling.
 	 */
-	if (sorce.wp_viewporter != NULL) {
-		sorce.window.wp_viewport = wp_viewporter_get_viewport(
-				sorce.wp_viewporter,
-				sorce.window.surface.wl_surface);
-		if (sorce.window.width > 0 && sorce.window.height > 0) {
+	if (sofi.wp_viewporter != NULL) {
+		sofi.window.wp_viewport = wp_viewporter_get_viewport(
+				sofi.wp_viewporter,
+				sofi.window.surface.wl_surface);
+		if (sofi.window.width > 0 && sofi.window.height > 0) {
 			wp_viewport_set_destination(
-					sorce.window.wp_viewport,
-					sorce.window.width,
-					sorce.window.height);
+					sofi.window.wp_viewport,
+					sofi.window.width,
+					sofi.window.height);
 		}
 	}
 
 	/* Commit the surface to finalise setup. */
-	wl_surface_commit(sorce.window.surface.wl_surface);
+	wl_surface_commit(sofi.window.surface.wl_surface);
 
 	/*
 	 * Create a data device and setup a listener for data offers. This is
 	 * required for clipboard support.
 	 */
-	sorce.wl_data_device = wl_data_device_manager_get_data_device(
-			sorce.wl_data_device_manager,
-			sorce.wl_seat);
+	sofi.wl_data_device = wl_data_device_manager_get_data_device(
+			sofi.wl_data_device_manager,
+			sofi.wl_seat);
 	wl_data_device_add_listener(
-			sorce.wl_data_device,
+			sofi.wl_data_device,
 			&wl_data_device_listener,
-			&sorce.clipboard);
+			&sofi.clipboard);
 
 	/*
 	 * Now that we've done all our Wayland-related setup, we do another
@@ -1659,7 +1659,7 @@ int main(int argc, char *argv[])
 	 */
 	log_debug("Third roundtrip start.\n");
 	log_indent();
-	wl_display_roundtrip(sorce.wl_display);
+	wl_display_roundtrip(sofi.wl_display);
 	log_unindent();
 	log_debug("Third roundtrip done.\n");
 
@@ -1671,7 +1671,7 @@ int main(int argc, char *argv[])
 	 */
 	log_debug("Initialising window surface.\n");
 	log_indent();
-	surface_init(&sorce.window.surface, sorce.wl_shm);
+	surface_init(&sofi.window.surface, sofi.wl_shm);
 	log_unindent();
 	log_debug("Window surface initialised.\n");
 
@@ -1694,25 +1694,25 @@ int main(int argc, char *argv[])
 		 * ease.
 		 */
 		uint32_t scale = 120;
-		if (sorce.use_scale) {
-			if (sorce.window.fractional_scale != 0) {
-				scale = sorce.window.fractional_scale;
+		if (sofi.use_scale) {
+			if (sofi.window.fractional_scale != 0) {
+				scale = sofi.window.fractional_scale;
 			} else {
-				scale = sorce.window.scale * 120;
+				scale = sofi.window.scale * 120;
 			}
 		}
 		entry_init(
-				&sorce.window.entry,
-				sorce.window.surface.shm_pool_data,
-				sorce.window.surface.width,
-				sorce.window.surface.height,
+				&sofi.window.entry,
+				sofi.window.surface.shm_pool_data,
+				sofi.window.surface.width,
+				sofi.window.surface.height,
 				scale);
 	}
 	log_unindent();
 	log_debug("Renderer initialised.\n");
 
 	/* Perform an initial render. */
-	surface_draw(&sorce.window.surface);
+	surface_draw(&sofi.window.surface);
 
 	/*
 	 * entry_init() left the second of the two buffers we use for
@@ -1722,40 +1722,40 @@ int main(int argc, char *argv[])
 	 * the main loop. This ensures we paint to the screen as quickly as
 	 * possible after startup.
 	 */
-	wl_display_roundtrip(sorce.wl_display);
+	wl_display_roundtrip(sofi.wl_display);
 	log_debug("Initialising second buffer.\n");
 	memcpy(
-		cairo_image_surface_get_data(sorce.window.entry.cairo[1].surface),
-		cairo_image_surface_get_data(sorce.window.entry.cairo[0].surface),
-		sorce.window.surface.width * sorce.window.surface.height * sizeof(uint32_t)
+		cairo_image_surface_get_data(sofi.window.entry.cairo[1].surface),
+		cairo_image_surface_get_data(sofi.window.entry.cairo[0].surface),
+		sofi.window.surface.width * sofi.window.surface.height * sizeof(uint32_t)
 	);
 	log_debug("Second buffer initialised.\n");
 
 	/* We've just rendered, so we don't need to do it again right now. */
-	sorce.window.surface.redraw = false;
+	sofi.window.surface.redraw = false;
 
 	/* If we delayed keyboard initialisation, do it now */
-	if (sorce.late_keyboard_init) {
+	if (sofi.late_keyboard_init) {
 		log_debug("Creating xkb context.\n");
-		sorce.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-		if (sorce.xkb_context == NULL) {
+		sofi.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+		if (sofi.xkb_context == NULL) {
 			log_error("Couldn't create an XKB context.\n");
 			exit(EXIT_FAILURE);
 		}
 		log_debug("Configuring keyboard.\n");
 		struct xkb_keymap *xkb_keymap = xkb_keymap_new_from_string(
-				sorce.xkb_context,
-				sorce.xkb_keymap_string,
+				sofi.xkb_context,
+				sofi.xkb_keymap_string,
 				XKB_KEYMAP_FORMAT_TEXT_V1,
 				XKB_KEYMAP_COMPILE_NO_FLAGS);
 
 		struct xkb_state *xkb_state = xkb_state_new(xkb_keymap);
-		xkb_keymap_unref(sorce.xkb_keymap);
-		xkb_state_unref(sorce.xkb_state);
-		sorce.xkb_keymap = xkb_keymap;
-		sorce.xkb_state = xkb_state;
-		free(sorce.xkb_keymap_string);
-		sorce.late_keyboard_init = false;
+		xkb_keymap_unref(sofi.xkb_keymap);
+		xkb_state_unref(sofi.xkb_state);
+		sofi.xkb_keymap = xkb_keymap;
+		sofi.xkb_state = xkb_state;
+		free(sofi.xkb_keymap_string);
+		sofi.late_keyboard_init = false;
 		log_debug("Keyboard configured.\n");
 	}
 
@@ -1764,17 +1764,17 @@ int main(int argc, char *argv[])
 	 * See the wl_display(3) man page for an explanation of the
 	 * order of the various functions called here.
 	 */
-	while (!sorce.closed) {
+	while (!sofi.closed) {
 		struct pollfd pollfds[2] = {{0}, {0}};
-		pollfds[0].fd = wl_display_get_fd(sorce.wl_display);
+		pollfds[0].fd = wl_display_get_fd(sofi.wl_display);
 
 		/* Make sure we're ready to receive events on the main queue. */
-		while (wl_display_prepare_read(sorce.wl_display) != 0) {
-			wl_display_dispatch_pending(sorce.wl_display);
+		while (wl_display_prepare_read(sofi.wl_display) != 0) {
+			wl_display_dispatch_pending(sofi.wl_display);
 		}
 
 		/* Make sure all our requests have been sent to the server. */
-		while (wl_display_flush(sorce.wl_display) != 0) {
+		while (wl_display_flush(sofi.wl_display) != 0) {
 			pollfds[0].events = POLLOUT;
 			poll(&pollfds[0], 1, -1);
 		}
@@ -1784,8 +1784,8 @@ int main(int argc, char *argv[])
 		 * there's some key repeating going on.
 		 */
 		int timeout = -1;
-		if (sorce.repeat.active) {
-			int64_t wait = (int64_t)sorce.repeat.next - (int64_t)gettime_ms();
+		if (sofi.repeat.active) {
+			int64_t wait = (int64_t)sofi.repeat.next - (int64_t)gettime_ms();
 			if (wait >= 0) {
 				timeout = wait;
 			} else {
@@ -1795,7 +1795,7 @@ int main(int argc, char *argv[])
 
 		pollfds[0].events = POLLIN | POLLPRI;
 		int res;
-		if (sorce.clipboard.fd == 0) {
+		if (sofi.clipboard.fd == 0) {
 			res = poll(&pollfds[0], 1, timeout);
 		} else {
 			/*
@@ -1803,7 +1803,7 @@ int main(int argc, char *argv[])
 			 * done by reading from a pipe, so poll that file
 			 * descriptor as well.
 			 */
-			pollfds[1].fd = sorce.clipboard.fd;
+			pollfds[1].fd = sofi.clipboard.fd;
 			pollfds[1].events = POLLIN | POLLPRI;
 			res = poll(pollfds, 2, timeout);
 		}
@@ -1812,32 +1812,32 @@ int main(int argc, char *argv[])
 			 * No events to process and no error - we presumably
 			 * have a key repeat to handle.
 			 */
-			wl_display_cancel_read(sorce.wl_display);
-			if (sorce.repeat.active) {
-				int64_t wait = (int64_t)sorce.repeat.next - (int64_t)gettime_ms();
+			wl_display_cancel_read(sofi.wl_display);
+			if (sofi.repeat.active) {
+				int64_t wait = (int64_t)sofi.repeat.next - (int64_t)gettime_ms();
 				if (wait <= 0) {
-					input_handle_keypress(&sorce, sorce.repeat.keycode);
-					sorce.repeat.next += 1000 / sorce.repeat.rate;
+					input_handle_keypress(&sofi, sofi.repeat.keycode);
+					sofi.repeat.next += 1000 / sofi.repeat.rate;
 				}
 			}
 		} else if (res < 0) {
 			/* There was an error polling the display. */
-			wl_display_cancel_read(sorce.wl_display);
+			wl_display_cancel_read(sofi.wl_display);
 		} else {
 			if (pollfds[0].revents & (POLLIN | POLLPRI)) {
 				/* Events to read, so put them on the queue. */
-				wl_display_read_events(sorce.wl_display);
+				wl_display_read_events(sofi.wl_display);
 			} else {
 				/*
 				 * No events to read - we were woken up to
 				 * handle clipboard data.
 				 */
-				wl_display_cancel_read(sorce.wl_display);
+				wl_display_cancel_read(sofi.wl_display);
 			}
 			if (pollfds[1].revents & (POLLIN | POLLPRI)) {
 				/* Read clipboard data. */
-				if (sorce.clipboard.fd > 0) {
-					read_clipboard(&sorce);
+				if (sofi.clipboard.fd > 0) {
+					read_clipboard(&sofi);
 				}
 			}
 			if (pollfds[1].revents & POLLHUP) {
@@ -1845,21 +1845,21 @@ int main(int argc, char *argv[])
 				 * The other end of the clipboard pipe has
 				 * closed, cleanup.
 				 */
-				clipboard_finish_paste(&sorce.clipboard);
+				clipboard_finish_paste(&sofi.clipboard);
 			}
 		}
 
 		/* Handle any events we read. */
-		wl_display_dispatch_pending(sorce.wl_display);
+		wl_display_dispatch_pending(sofi.wl_display);
 
-		if (sorce.window.surface.redraw) {
-			entry_update(&sorce.window.entry);
-			surface_draw(&sorce.window.surface);
-			sorce.window.surface.redraw = false;
+		if (sofi.window.surface.redraw) {
+			entry_update(&sofi.window.entry);
+			surface_draw(&sofi.window.surface);
+			sofi.window.surface.redraw = false;
 		}
-		if (sorce.submit) {
-			sorce.submit = false;
-			if (do_submit(&sorce)) {
+		if (sofi.submit) {
+			sofi.submit = false;
+			if (do_submit(&sofi)) {
 				break;
 			}
 		}
@@ -1874,68 +1874,68 @@ int main(int argc, char *argv[])
 	 * mostly from Pango, and Cairo holds onto quite a bit of cached data
 	 * (without leaking it)
 	 */
-	surface_destroy(&sorce.window.surface);
-	entry_destroy(&sorce.window.entry);
-	if (sorce.window.wp_viewport != NULL) {
-		wp_viewport_destroy(sorce.window.wp_viewport);
+	surface_destroy(&sofi.window.surface);
+	entry_destroy(&sofi.window.entry);
+	if (sofi.window.wp_viewport != NULL) {
+		wp_viewport_destroy(sofi.window.wp_viewport);
 	}
-	zwlr_layer_surface_v1_destroy(sorce.window.zwlr_layer_surface);
-	wl_surface_destroy(sorce.window.surface.wl_surface);
-	if (sorce.wl_keyboard != NULL) {
-		wl_keyboard_release(sorce.wl_keyboard);
+	zwlr_layer_surface_v1_destroy(sofi.window.zwlr_layer_surface);
+	wl_surface_destroy(sofi.window.surface.wl_surface);
+	if (sofi.wl_keyboard != NULL) {
+		wl_keyboard_release(sofi.wl_keyboard);
 	}
-	if (sorce.wl_pointer != NULL) {
-		wl_pointer_release(sorce.wl_pointer);
+	if (sofi.wl_pointer != NULL) {
+		wl_pointer_release(sofi.wl_pointer);
 	}
-	wl_compositor_destroy(sorce.wl_compositor);
-	if (sorce.clipboard.wl_data_offer != NULL) {
-		wl_data_offer_destroy(sorce.clipboard.wl_data_offer);
+	wl_compositor_destroy(sofi.wl_compositor);
+	if (sofi.clipboard.wl_data_offer != NULL) {
+		wl_data_offer_destroy(sofi.clipboard.wl_data_offer);
 	}
-	wl_data_device_release(sorce.wl_data_device);
-	wl_data_device_manager_destroy(sorce.wl_data_device_manager);
-	wl_seat_release(sorce.wl_seat);
+	wl_data_device_release(sofi.wl_data_device);
+	wl_data_device_manager_destroy(sofi.wl_data_device_manager);
+	wl_seat_release(sofi.wl_seat);
 	{
 		struct output_list_element *el;
 		struct output_list_element *tmp;
-		wl_list_for_each_safe(el, tmp, &sorce.output_list, link) {
+		wl_list_for_each_safe(el, tmp, &sofi.output_list, link) {
 			wl_list_remove(&el->link);
 			wl_output_release(el->wl_output);
 			free(el->name);
 			free(el);
 		}
 	}
-	wl_shm_destroy(sorce.wl_shm);
-	if (sorce.wp_fractional_scale_manager != NULL) {
-		wp_fractional_scale_manager_v1_destroy(sorce.wp_fractional_scale_manager);
+	wl_shm_destroy(sofi.wl_shm);
+	if (sofi.wp_fractional_scale_manager != NULL) {
+		wp_fractional_scale_manager_v1_destroy(sofi.wp_fractional_scale_manager);
 	}
-	if (sorce.wp_viewporter != NULL) {
-		wp_viewporter_destroy(sorce.wp_viewporter);
+	if (sofi.wp_viewporter != NULL) {
+		wp_viewporter_destroy(sofi.wp_viewporter);
 	}
-	zwlr_layer_shell_v1_destroy(sorce.zwlr_layer_shell);
-	xkb_state_unref(sorce.xkb_state);
-	xkb_keymap_unref(sorce.xkb_keymap);
-	xkb_context_unref(sorce.xkb_context);
-	wl_registry_destroy(sorce.wl_registry);
-	if (sorce.window.entry.mode == TOFI_MODE_DRUN) {
-		desktop_vec_destroy(&sorce.window.entry.apps);
+	zwlr_layer_shell_v1_destroy(sofi.zwlr_layer_shell);
+	xkb_state_unref(sofi.xkb_state);
+	xkb_keymap_unref(sofi.xkb_keymap);
+	xkb_context_unref(sofi.xkb_context);
+	wl_registry_destroy(sofi.wl_registry);
+	if (sofi.window.entry.mode == TOFI_MODE_DRUN) {
+		desktop_vec_destroy(&sofi.window.entry.apps);
 	}
-	if (sorce.window.entry.command_buffer != NULL) {
-		free(sorce.window.entry.command_buffer);
+	if (sofi.window.entry.command_buffer != NULL) {
+		free(sofi.window.entry.command_buffer);
 	}
-	string_ref_vec_destroy(&sorce.window.entry.commands);
-	string_ref_vec_destroy(&sorce.window.entry.results);
-	if (sorce.use_history) {
-		history_destroy(&sorce.window.entry.history);
+	string_ref_vec_destroy(&sofi.window.entry.commands);
+	string_ref_vec_destroy(&sofi.window.entry.results);
+	if (sofi.use_history) {
+		history_destroy(&sofi.window.entry.history);
 	}
 #endif
 	/*
 	 * For release builds, skip straight to display disconnection and quit.
 	 */
-	wl_display_roundtrip(sorce.wl_display);
-	wl_display_disconnect(sorce.wl_display);
+	wl_display_roundtrip(sofi.wl_display);
+	wl_display_disconnect(sofi.wl_display);
 
 	log_debug("Finished, exiting.\n");
-	if (sorce.closed) {
+	if (sofi.closed) {
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

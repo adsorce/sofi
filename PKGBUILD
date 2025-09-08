@@ -1,15 +1,15 @@
 # Maintainer: Alex <alex@example.com>
 
-pkgname=sorce
+pkgname=sofi
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="A unified app and file launcher for Wayland"
 arch=('x86_64')
-url="https://github.com/adsorce/sorce"
+url="https://github.com/adsofi/sofi"
 license=('MIT')
 depends=('cairo' 'freetype2' 'glib2' 'harfbuzz' 'libxkbcommon' 'pango' 'wayland')
 makedepends=('meson' 'scdoc' 'wayland-protocols')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/adsorce/sorce/archive/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/adsofi/sofi/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {

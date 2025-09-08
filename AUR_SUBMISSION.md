@@ -1,4 +1,4 @@
-# Submitting Sorce to AUR
+# Submitting Sofi to AUR
 
 ## Prerequisites
 1. Create an AUR account at https://aur.archlinux.org/register
@@ -11,12 +11,12 @@
 git tag v1.0.0
 git push origin v1.0.0
 ```
-Then go to https://github.com/adsorce/sorce/releases and create a release from the tag.
+Then go to https://github.com/adsofi/sofi/releases and create a release from the tag.
 
 ### 2. Update PKGBUILD SHA256
 After creating the release, get the real SHA256:
 ```bash
-curl -L https://github.com/adsorce/sorce/archive/v1.0.0.tar.gz | sha256sum
+curl -L https://github.com/adsofi/sofi/archive/v1.0.0.tar.gz | sha256sum
 ```
 Update the sha256sums in PKGBUILD with the actual value.
 
@@ -33,8 +33,8 @@ makepkg --printsrcinfo > .SRCINFO
 
 ### 5. Clone AUR Repository
 ```bash
-git clone ssh://aur@aur.archlinux.org/sorce.git aur-sorce
-cd aur-sorce
+git clone ssh://aur@aur.archlinux.org/sofi.git aur-sofi
+cd aur-sofi
 ```
 
 ### 6. Add PKGBUILD and .SRCINFO
@@ -42,16 +42,16 @@ cd aur-sorce
 cp ../PKGBUILD .
 cp ../.SRCINFO .
 git add PKGBUILD .SRCINFO
-git commit -m "Initial commit: sorce 1.0.0"
+git commit -m "Initial commit: sofi 1.0.0"
 git push
 ```
 
 ## Congratulations!
 Your package is now in the AUR! Users can install it with:
 ```bash
-paru -S sorce
+paru -S sofi
 # or
-yay -S sorce
+yay -S sofi
 ```
 
 ## Maintenance

@@ -4,20 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include "config.h"
-#include "sorce.h"
+#include "sofi.h"
 #include "tap.h"
 
 void is_valid(const char *option, const char *value, const char *message)
 {
-	struct sorce sorce;
-	bool res = config_apply(&sorce, option, value);
+	struct sofi sofi;
+	bool res = config_apply(&sofi, option, value);
 	tap_is(res, true, message);
 }
 
 void isnt_valid(const char *option, const char *value, const char *message)
 {
-	struct sorce sorce;
-	bool res = config_apply(&sorce, option, value);
+	struct sofi sofi;
+	bool res = config_apply(&sofi, option, value);
 	tap_is(res, false, message);
 }
 

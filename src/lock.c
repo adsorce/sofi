@@ -9,7 +9,7 @@
 #include "xmalloc.h"
 
 static const char *default_cache_dir = ".cache/";
-static const char *lock_filename = "sorce.lock";
+static const char *lock_filename = "sofi.lock";
 
 [[nodiscard("memory leaked")]]
 static char *get_lock_path() {
@@ -60,7 +60,7 @@ bool lock_check(void)
 	} else if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
 		if (errno == EWOULDBLOCK) {
 			/*
-			 * We can't lock the file because another sorce process
+			 * We can't lock the file because another sofi process
 			 * already has.
 			 */
 			ret = true;

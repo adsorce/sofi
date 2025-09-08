@@ -15,7 +15,7 @@
 #include "xmalloc.h"
 
 static const char *default_cache_dir = ".cache";
-static const char *cache_basename = "sorce-files";
+static const char *cache_basename = "sofi-files";
 
 /* Directories to exclude from search */
 static const char *exclude_dirs[] = {
@@ -100,7 +100,7 @@ static int cached_app_count = -1;
 
 static char *generate_file_list() {
     /* Create temporary file for building the list */
-    char tmp_path[] = "/tmp/sorce-files-XXXXXX";
+    char tmp_path[] = "/tmp/sofi-files-XXXXXX";
     int fd = mkstemp(tmp_path);
     if (fd == -1) {
         log_error("Failed to create temp file.\n");
@@ -297,7 +297,7 @@ void files_launch(const char *path) {
             if (focus_pid == 0) {
                 /* Child process for focusing */
                 /* Redirect to log file for debugging */
-                FILE *log = fopen("/tmp/sorce-focus.log", "w");
+                FILE *log = fopen("/tmp/sofi-focus.log", "w");
                 if (log) {
                     dup2(fileno(log), STDERR_FILENO);
                     dup2(fileno(log), STDOUT_FILENO);

@@ -313,7 +313,7 @@ static bool size_overflows(struct entry *entry, uint32_t width, uint32_t height)
  * This is pretty much a direct translation of the corresponding function in
  * the harfbuzz backend. As that's the one that I care about most, there are
  * more explanatory comments than there are here, so go look at that if you
- * want to understand how sorce's text rendering works.
+ * want to understand how sofi's text rendering works.
  */
 void entry_backend_pango_update(struct entry *entry)
 {

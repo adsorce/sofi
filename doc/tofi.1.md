@@ -1,27 +1,27 @@
 ## NAME
 
-sorce - Tiny dynamic menu for Wayland, inspired by **rofi**(1) and
+sofi - Tiny dynamic menu for Wayland, inspired by **rofi**(1) and
 **dmenu**(1).
 
 ## SYNOPSIS
 
-**sorce** \[options...\]
+**sofi** \[options...\]
 
-**sorce-run** \[options...\]
+**sofi-run** \[options...\]
 
-**sorce-drun** \[options...\]
+**sofi-drun** \[options...\]
 
 ## DESCRIPTION
 
-**sorce** is a tiny dynamic menu for Wayland compositors supporting the
+**sofi** is a tiny dynamic menu for Wayland compositors supporting the
 layer-shell protocol. It reads newline-separated items from stdin, and
 displays a graphical selection menu. When a selection is made, it is
 printed to stdout.
 
-When invoked via the name **sorce-run**, **sorce** will not accept items
+When invoked via the name **sofi-run**, **sofi** will not accept items
 on stdin, instead presenting a list of executables in the user's \$PATH.
 
-When invoked via the name **sorce-drun**, **sorce** will not accept items
+When invoked via the name **sofi-drun**, **sofi** will not accept items
 on stdin, and will generate a list of applications from desktop files as
 described in the Desktop Entry Specification.
 
@@ -35,7 +35,7 @@ described in the Desktop Entry Specification.
 
 > Specify path to custom config file.
 
-All config file options described in **sorce**(5) are also accepted, in
+All config file options described in **sofi**(5) are also accepted, in
 the form **--key=value**.
 
 ## KEYS
@@ -80,39 +80,39 @@ the form **--key=value**.
 
 ## FILES
 
-*/etc/xdg/sorce/config*
+*/etc/xdg/sofi/config*
 
 > Example configuration file.
 
-*\$XDG_CONFIG_HOME/sorce/config*
+*\$XDG_CONFIG_HOME/sofi/config*
 
 > The default configuration file location.
 
-*\$XDG_CACHE_HOME/sorce-compgen*
+*\$XDG_CACHE_HOME/sofi-compgen*
 
 > Cached list of executables under \$PATH, regenerated as necessary.
 
-*\$XDG_CACHE_HOME/sorce-drun*
+*\$XDG_CACHE_HOME/sofi-drun*
 
 > Cached list of desktop applications, regenerated as necessary.
 
-*\$XDG_STATE_HOME/sorce-history*
+*\$XDG_STATE_HOME/sofi-history*
 
-> Numeric count of commands selected in **sorce-run**, to enable sorting
+> Numeric count of commands selected in **sofi-run**, to enable sorting
 > results by run count.
 
-*\$XDG_STATE_HOME/sorce-drun-history*
+*\$XDG_STATE_HOME/sofi-drun-history*
 
-> Numeric count of commands selected in **sorce-drun**, to enable sorting
+> Numeric count of commands selected in **sofi-drun**, to enable sorting
 > results by run count.
 
 ## EXIT STATUS
 
-**sorce** exits with one of the following values:
+**sofi** exits with one of the following values:
 
 0
 
-> Success; a selection was made, or **sorce** was invoked with the **-h**
+> Success; a selection was made, or **sofi** was invoked with the **-h**
 > option.
 
 1
@@ -125,4 +125,4 @@ Philip Jones \<<philj56@gmail.com>\>
 
 ## SEE ALSO
 
-**sorce**(5), **dmenu**(1), **rofi**(1)
+**sofi**(5), **dmenu**(1), **rofi**(1)

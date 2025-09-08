@@ -14,7 +14,7 @@
 #include "xmalloc.h"
 
 static const char *default_cache_dir = ".cache";
-static const char *cache_basename = "sorce-compgen";
+static const char *cache_basename = "sofi-compgen";
 
 [[nodiscard("memory leaked")]]
 static char *get_cache_path() {

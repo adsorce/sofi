@@ -1,5 +1,5 @@
 project(
-  'sorce',
+  'sofi',
   'c',
   version: '0.9.1',
   license: 'MIT',
@@ -24,7 +24,7 @@ endif
 config_location = join_paths(
   get_option('sysconfdir'),
   'xdg',
-  'sorce'
+  'sofi'
 )
 
 install_data(
@@ -35,7 +35,7 @@ install_data(
 license_dir = join_paths(
   get_option('datadir'),
   'licenses',
-  'sorce'
+  'sofi'
 )
 
 install_data(
@@ -56,39 +56,39 @@ install_data(
 )
 
 install_symlink(
-  'sorce-run',
+  'sofi-run',
   install_dir: completion_location,
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 install_symlink(
-  'sorce-drun',
+  'sofi-drun',
   install_dir: completion_location,
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 install_symlink(
-  'sorce-files',
+  'sofi-files',
   install_dir: completion_location,
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 install_symlink(
-  'sorce-run',
+  'sofi-run',
   install_dir: get_option('bindir'),
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 install_symlink(
-  'sorce-drun',
+  'sofi-drun',
   install_dir: get_option('bindir'),
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 install_symlink(
-  'sorce-files',
+  'sofi-files',
   install_dir: get_option('bindir'),
-  pointing_to: 'sorce',
+  pointing_to: 'sofi',
 )
 
 add_project_arguments(
@@ -215,7 +215,7 @@ endforeach
 subdir('test')
 
 executable(
-  'sorce',
+  'sofi',
   files('src/main.c'), common_sources, wl_proto_src, wl_proto_headers,
   dependencies: [librt, libm, libfts, freetype, harfbuzz, cairo, pangocairo, wayland_client, xkbcommon, glib, gio_unix],
   install: true

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include "sorce.h"
+#include "sofi.h"
 #include "color.h"
 #include "config.h"
 #include "log.h"
@@ -73,7 +73,7 @@ struct uint32_percent {
 };
 
 static char *strip(const char *str);
-static bool parse_option(struct sorce *sorce, const char *filename, size_t lineno, const char *option, const char *value);
+static bool parse_option(struct sofi *sofi, const char *filename, size_t lineno, const char *option, const char *value);
 static char *get_config_path(void);
 static uint32_t fixup_percentage(uint32_t value, uint32_t base, bool is_percent);
 
@@ -108,7 +108,7 @@ static struct directional parse_directional(const char *filename, size_t lineno,
 		log_error((fmt), __VA_ARGS__); \
 	}
 
-void config_load(struct sorce *sorce, const char *filename)
+void config_load(struct sofi *sofi, const char *filename)
 {
 	char *default_filename = NULL;
 	if (!filename) {
@@ -255,7 +255,7 @@ void config_load(struct sorce *sorce, const char *filename)
 			free(option_stripped);
 			continue;
 		}
-		if (!parse_option(sorce, filename, lineno, option_stripped, value_stripped)) {
+		if (!parse_option(sofi, filename, lineno, option_stripped, value_stripped)) {
 			num_errs++;
 		}
 
@@ -302,45 +302,45 @@ char *strip(const char *str)
 	return buf;
 }
 
-bool parse_option(struct sorce *sorce, const char *filename, size_t lineno, const char *option, const char *value)
+bool parse_option(struct sofi *sofi, const char *filename, size_t lineno, const char *option, const char *value)
 {
 	bool err = false;
 	struct uint32_percent percent;
 	if (strcasecmp(option, "include") == 0) {
 		if (value[0] == '/') {
-			config_load(sorce, value);
+			config_load(sofi, value);
 		} else {
 			char *tmp = xstrdup(filename);
 			char *dir = dirname(tmp);
 			size_t len = strlen(dir) + 1 + strlen(value) + 1;
 			char *config = xcalloc(len, 1);
 			snprintf(config, len, "%s/%s", dir, value);
-			config_load(sorce, config);
+			config_load(sofi, config);
 			free(config);
 			free(tmp);
 		}
 	} else if (strcasecmp(option, "anchor") == 0) {
 		uint32_t val = parse_anchor(filename, lineno, value, &err);
 		if (!err) {
-			sorce->anchor = val;
+			sofi->anchor = val;
 		}
 	} else if (strcasecmp(option, "background-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.background_color = val;
+			sofi->window.entry.background_color = val;
 		}
 	} else if (strcasecmp(option, "corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.corner_radius = val;
+			sofi->window.entry.corner_radius = val;
 		}
 	} else if (strcasecmp(option, "output") == 0) {
-		snprintf(sorce->target_output_name, N_ELEM(sorce->target_output_name), "%s", value);
+		snprintf(sofi->target_output_name, N_ELEM(sofi->target_output_name), "%s", value);
 	} else if (strcasecmp(option, "font") == 0) {
 		if ((strlen(value) > 2) && (value[0] == '~') && (value[1] == '/')) {
-			snprintf(sorce->window.entry.font_name, N_ELEM(sorce->window.entry.font_name), "%s%s", getenv("HOME"), &(value[1]));
+			snprintf(sofi->window.entry.font_name, N_ELEM(sofi->window.entry.font_name), "%s%s", getenv("HOME"), &(value[1]));
 		} else {
-			snprintf(sorce->window.entry.font_name, N_ELEM(sorce->window.entry.font_name), "%s", value);
+			snprintf(sofi->window.entry.font_name, N_ELEM(sofi->window.entry.font_name), "%s", value);
 		}
 	} else if (strcasecmp(option, "font-size") == 0) {
 		uint32_t val =  parse_uint32(filename, lineno, value, &err);
@@ -348,423 +348,423 @@ bool parse_option(struct sorce *sorce, const char *filename, size_t lineno, cons
 			err = true;
 			PARSE_ERROR(filename, lineno, "Option \"%s\" must be greater than 0.\n", option);
 		} else {
-			sorce->window.entry.font_size = val;
+			sofi->window.entry.font_size = val;
 		}
 	} else if (strcasecmp(option, "font-features") == 0) {
-		snprintf(sorce->window.entry.font_features, N_ELEM(sorce->window.entry.font_features), "%s", value);
+		snprintf(sofi->window.entry.font_features, N_ELEM(sofi->window.entry.font_features), "%s", value);
 	} else if (strcasecmp(option, "font-variations") == 0) {
-		snprintf(sorce->window.entry.font_variations, N_ELEM(sorce->window.entry.font_variations), "%s", value);
+		snprintf(sofi->window.entry.font_variations, N_ELEM(sofi->window.entry.font_variations), "%s", value);
 	} else if (strcasecmp(option, "num-results") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.num_results = val;
+			sofi->window.entry.num_results = val;
 		}
 	} else if (strcasecmp(option, "outline-width") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.outline_width = val;
+			sofi->window.entry.outline_width = val;
 		}
 	} else if (strcasecmp(option, "outline-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.outline_color = val;
+			sofi->window.entry.outline_color = val;
 		}
 	} else if (strcasecmp(option, "text-cursor") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.show = val;
+			sofi->window.entry.cursor_theme.show = val;
 		}
 	} else if (strcasecmp(option, "text-cursor-style") == 0) {
 		enum cursor_style val = parse_cursor_style(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.style = val;
+			sofi->window.entry.cursor_theme.style = val;
 		}
 	} else if (strcasecmp(option, "text-cursor-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.color = val;
-			sorce->window.entry.cursor_theme.color_specified = true;
+			sofi->window.entry.cursor_theme.color = val;
+			sofi->window.entry.cursor_theme.color_specified = true;
 		}
 	} else if (strcasecmp(option, "text-cursor-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.text_color = val;
-			sorce->window.entry.cursor_theme.text_color_specified = true;
+			sofi->window.entry.cursor_theme.text_color = val;
+			sofi->window.entry.cursor_theme.text_color_specified = true;
 		}
 	} else if (strcasecmp(option, "text-cursor-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.corner_radius = val;
+			sofi->window.entry.cursor_theme.corner_radius = val;
 		}
 	} else if (strcasecmp(option, "text-cursor-thickness") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.cursor_theme.thickness = val;
-			sorce->window.entry.cursor_theme.thickness_specified = true;
+			sofi->window.entry.cursor_theme.thickness = val;
+			sofi->window.entry.cursor_theme.thickness_specified = true;
 		}
 	} else if (strcasecmp(option, "prompt-text") == 0) {
-		snprintf(sorce->window.entry.prompt_text, N_ELEM(sorce->window.entry.prompt_text), "%s", value);
+		snprintf(sofi->window.entry.prompt_text, N_ELEM(sofi->window.entry.prompt_text), "%s", value);
 	} else if (strcasecmp(option, "prompt-padding") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.prompt_padding = val;
+			sofi->window.entry.prompt_padding = val;
 		}
 	} else if (strcasecmp(option, "prompt-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.prompt_theme.foreground_color = val;
-			sorce->window.entry.prompt_theme.foreground_specified = true;
+			sofi->window.entry.prompt_theme.foreground_color = val;
+			sofi->window.entry.prompt_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "prompt-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.prompt_theme.background_color = val;
-			sorce->window.entry.prompt_theme.background_specified = true;
+			sofi->window.entry.prompt_theme.background_color = val;
+			sofi->window.entry.prompt_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "prompt-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.prompt_theme.padding = val;
-			sorce->window.entry.prompt_theme.padding_specified = true;
+			sofi->window.entry.prompt_theme.padding = val;
+			sofi->window.entry.prompt_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "prompt-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.prompt_theme.background_corner_radius = val;
-			sorce->window.entry.prompt_theme.radius_specified = true;
+			sofi->window.entry.prompt_theme.background_corner_radius = val;
+			sofi->window.entry.prompt_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "placeholder-text") == 0) {
-		snprintf(sorce->window.entry.placeholder_text, N_ELEM(sorce->window.entry.placeholder_text), "%s", value);
+		snprintf(sofi->window.entry.placeholder_text, N_ELEM(sofi->window.entry.placeholder_text), "%s", value);
 	} else if (strcasecmp(option, "placeholder-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.placeholder_theme.foreground_color = val;
-			sorce->window.entry.placeholder_theme.foreground_specified = true;
+			sofi->window.entry.placeholder_theme.foreground_color = val;
+			sofi->window.entry.placeholder_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "placeholder-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.placeholder_theme.background_color = val;
-			sorce->window.entry.placeholder_theme.background_specified = true;
+			sofi->window.entry.placeholder_theme.background_color = val;
+			sofi->window.entry.placeholder_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "placeholder-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.placeholder_theme.padding = val;
-			sorce->window.entry.placeholder_theme.padding_specified = true;
+			sofi->window.entry.placeholder_theme.padding = val;
+			sofi->window.entry.placeholder_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "placeholder-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.placeholder_theme.background_corner_radius = val;
-			sorce->window.entry.placeholder_theme.radius_specified = true;
+			sofi->window.entry.placeholder_theme.background_corner_radius = val;
+			sofi->window.entry.placeholder_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "input-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.input_theme.foreground_color = val;
-			sorce->window.entry.input_theme.foreground_specified = true;
+			sofi->window.entry.input_theme.foreground_color = val;
+			sofi->window.entry.input_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "input-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.input_theme.background_color = val;
-			sorce->window.entry.input_theme.background_specified = true;
+			sofi->window.entry.input_theme.background_color = val;
+			sofi->window.entry.input_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "input-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.input_theme.padding = val;
-			sorce->window.entry.input_theme.padding_specified = true;
+			sofi->window.entry.input_theme.padding = val;
+			sofi->window.entry.input_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "input-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.input_theme.background_corner_radius = val;
-			sorce->window.entry.input_theme.radius_specified = true;
+			sofi->window.entry.input_theme.background_corner_radius = val;
+			sofi->window.entry.input_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "default-result-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.default_result_theme.foreground_color = val;
-			sorce->window.entry.default_result_theme.foreground_specified = true;
+			sofi->window.entry.default_result_theme.foreground_color = val;
+			sofi->window.entry.default_result_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "default-result-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.default_result_theme.background_color = val;
-			sorce->window.entry.default_result_theme.background_specified = true;
+			sofi->window.entry.default_result_theme.background_color = val;
+			sofi->window.entry.default_result_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "default-result-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.default_result_theme.padding = val;
-			sorce->window.entry.default_result_theme.padding_specified = true;
+			sofi->window.entry.default_result_theme.padding = val;
+			sofi->window.entry.default_result_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "default-result-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.default_result_theme.background_corner_radius = val;
-			sorce->window.entry.default_result_theme.radius_specified = true;
+			sofi->window.entry.default_result_theme.background_corner_radius = val;
+			sofi->window.entry.default_result_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "alternate-result-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.alternate_result_theme.foreground_color = val;
-			sorce->window.entry.alternate_result_theme.foreground_specified = true;
+			sofi->window.entry.alternate_result_theme.foreground_color = val;
+			sofi->window.entry.alternate_result_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "alternate-result-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.alternate_result_theme.background_color = val;
-			sorce->window.entry.alternate_result_theme.background_specified = true;
+			sofi->window.entry.alternate_result_theme.background_color = val;
+			sofi->window.entry.alternate_result_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "alternate-result-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.alternate_result_theme.padding = val;
-			sorce->window.entry.alternate_result_theme.padding_specified = true;
+			sofi->window.entry.alternate_result_theme.padding = val;
+			sofi->window.entry.alternate_result_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "alternate-result-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.alternate_result_theme.background_corner_radius = val;
-			sorce->window.entry.alternate_result_theme.radius_specified = true;
+			sofi->window.entry.alternate_result_theme.background_corner_radius = val;
+			sofi->window.entry.alternate_result_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "min-input-width") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.input_width = val;
+			sofi->window.entry.input_width = val;
 		}
 	} else if (strcasecmp(option, "result-spacing") == 0) {
 		int32_t val = parse_int32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.result_spacing = val;
+			sofi->window.entry.result_spacing = val;
 		}
 	} else if (strcasecmp(option, "border-width") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.border_width = val;
+			sofi->window.entry.border_width = val;
 		}
 	} else if (strcasecmp(option, "border-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.border_color = val;
+			sofi->window.entry.border_color = val;
 		}
 	} else if (strcasecmp(option, "text-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.foreground_color = val;
+			sofi->window.entry.foreground_color = val;
 		}
 	} else if (strcasecmp(option, "selection-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_theme.foreground_color = val;
-			sorce->window.entry.selection_theme.foreground_specified = true;
+			sofi->window.entry.selection_theme.foreground_color = val;
+			sofi->window.entry.selection_theme.foreground_specified = true;
 		}
 	} else if (strcasecmp(option, "selection-match-color") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_highlight_color = val;
+			sofi->window.entry.selection_highlight_color = val;
 		}
 	} else if (strcasecmp(option, "selection-padding") == 0) {
 		log_warning("The \"selection-padding\" option is deprecated, and will be removed in future. Please switch to \"selection-background-padding\".\n");
 		int32_t val = parse_int32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_theme.padding.left = val;
-			sorce->window.entry.selection_theme.padding.right = val;
-			sorce->window.entry.selection_theme.padding_specified = true;
+			sofi->window.entry.selection_theme.padding.left = val;
+			sofi->window.entry.selection_theme.padding.right = val;
+			sofi->window.entry.selection_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "selection-background") == 0) {
 		struct color val = parse_color(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_theme.background_color = val;
-			sorce->window.entry.selection_theme.background_specified = true;
+			sofi->window.entry.selection_theme.background_color = val;
+			sofi->window.entry.selection_theme.background_specified = true;
 		}
 	} else if (strcasecmp(option, "selection-background-padding") == 0) {
 		struct directional val = parse_directional(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_theme.padding = val;
-			sorce->window.entry.selection_theme.padding_specified = true;
+			sofi->window.entry.selection_theme.padding = val;
+			sofi->window.entry.selection_theme.padding_specified = true;
 		}
 	} else if (strcasecmp(option, "selection-background-corner-radius") == 0) {
 		uint32_t val = parse_uint32(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.selection_theme.background_corner_radius = val;
-			sorce->window.entry.selection_theme.radius_specified = true;
+			sofi->window.entry.selection_theme.background_corner_radius = val;
+			sofi->window.entry.selection_theme.radius_specified = true;
 		}
 	} else if (strcasecmp(option, "exclusive-zone") == 0) {
 		if (strcmp(value, "-1") == 0) {
-			sorce->window.exclusive_zone = -1;
+			sofi->window.exclusive_zone = -1;
 		} else {
 			percent = parse_uint32_percent(filename, lineno, value, &err);
 			if (!err) {
-				sorce->window.exclusive_zone = percent.value;
-				sorce->window.exclusive_zone_is_percent = percent.percent;
+				sofi->window.exclusive_zone = percent.value;
+				sofi->window.exclusive_zone_is_percent = percent.percent;
 			}
 		}
 	} else if (strcasecmp(option, "width") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.width = percent.value;
-			sorce->window.width_is_percent = percent.percent;
+			sofi->window.width = percent.value;
+			sofi->window.width_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "height") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.height = percent.value;
-			sorce->window.height_is_percent = percent.percent;
+			sofi->window.height = percent.value;
+			sofi->window.height_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "margin-top") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.margin_top = percent.value;
-			sorce->window.margin_top_is_percent = percent.percent;
+			sofi->window.margin_top = percent.value;
+			sofi->window.margin_top_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "margin-bottom") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.margin_bottom = percent.value;
-			sorce->window.margin_bottom_is_percent = percent.percent;
+			sofi->window.margin_bottom = percent.value;
+			sofi->window.margin_bottom_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "margin-left") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.margin_left = percent.value;
-			sorce->window.margin_left_is_percent = percent.percent;
+			sofi->window.margin_left = percent.value;
+			sofi->window.margin_left_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "margin-right") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.margin_right = percent.value;
-			sorce->window.margin_right_is_percent = percent.percent;
+			sofi->window.margin_right = percent.value;
+			sofi->window.margin_right_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "padding-top") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.padding_top = percent.value;
-			sorce->window.entry.padding_top_is_percent = percent.percent;
+			sofi->window.entry.padding_top = percent.value;
+			sofi->window.entry.padding_top_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "padding-bottom") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.padding_bottom = percent.value;
-			sorce->window.entry.padding_bottom_is_percent = percent.percent;
+			sofi->window.entry.padding_bottom = percent.value;
+			sofi->window.entry.padding_bottom_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "padding-left") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.padding_left = percent.value;
-			sorce->window.entry.padding_left_is_percent = percent.percent;
+			sofi->window.entry.padding_left = percent.value;
+			sofi->window.entry.padding_left_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "padding-right") == 0) {
 		percent = parse_uint32_percent(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.padding_right = percent.value;
-			sorce->window.entry.padding_right_is_percent = percent.percent;
+			sofi->window.entry.padding_right = percent.value;
+			sofi->window.entry.padding_right_is_percent = percent.percent;
 		}
 	} else if (strcasecmp(option, "clip-to-padding") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.clip_to_padding = val;
+			sofi->window.entry.clip_to_padding = val;
 		}
 	} else if (strcasecmp(option, "horizontal") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.horizontal = val;
+			sofi->window.entry.horizontal = val;
 		}
 	} else if (strcasecmp(option, "hide-cursor") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->hide_cursor = val;
+			sofi->hide_cursor = val;
 		}
 	} else if (strcasecmp(option, "history") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->use_history = val;
+			sofi->use_history = val;
 		}
 	} else if (strcasecmp(option, "history-file") == 0) {
-		snprintf(sorce->history_file, N_ELEM(sorce->history_file), "%s", value);
+		snprintf(sofi->history_file, N_ELEM(sofi->history_file), "%s", value);
 	} else if (strcasecmp(option, "matching-algorithm") == 0) {
 		enum matching_algorithm val = parse_matching_algorithm(filename, lineno, value, &err);
 		if (!err) {
-			sorce->matching_algorithm= val;
+			sofi->matching_algorithm= val;
 		}
 	} else if (strcasecmp(option, "fuzzy-match") == 0) {
 		log_warning("The \"fuzzy-match\" option is deprecated, and may be removed in future. Please switch to \"matching-algorithm\".\n");
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
 			if (val) {
-				sorce->matching_algorithm = MATCHING_ALGORITHM_FUZZY;
+				sofi->matching_algorithm = MATCHING_ALGORITHM_FUZZY;
 			}
 		}
 	} else if (strcasecmp(option, "require-match") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->require_match = val;
+			sofi->require_match = val;
 		}
 	} else if (strcasecmp(option, "auto-accept-single") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->auto_accept_single = val;
+			sofi->auto_accept_single = val;
 		}
 	} else if (strcasecmp(option, "print-index") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->print_index = val;
+			sofi->print_index = val;
 		}
 	} else if (strcasecmp(option, "hide-input") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.hide_input = val;
+			sofi->window.entry.hide_input = val;
 		}
 	} else if (strcasecmp(option, "hidden-character") == 0) {
 		uint32_t ch = parse_char(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.hidden_character_utf8_length = 
-				utf32_to_utf8(ch, sorce->window.entry.hidden_character_utf8);
+			sofi->window.entry.hidden_character_utf8_length = 
+				utf32_to_utf8(ch, sofi->window.entry.hidden_character_utf8);
 		}
 	} else if (strcasecmp(option, "physical-keybindings") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->physical_keybindings = val;
+			sofi->physical_keybindings = val;
 		}
 	} else if (strcasecmp(option, "drun-launch") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->drun_launch = val;
+			sofi->drun_launch = val;
 		}
 	} else if (strcasecmp(option, "drun-print-exec") == 0) {
 		log_warning("drun-print-exec is deprecated, as it is now always true.\n"
-				"           This option may be removed in a future version of sorce.\n");
+				"           This option may be removed in a future version of sofi.\n");
 	} else if (strcasecmp(option, "terminal") == 0) {
-		snprintf(sorce->default_terminal, N_ELEM(sorce->default_terminal), "%s", value);
+		snprintf(sofi->default_terminal, N_ELEM(sofi->default_terminal), "%s", value);
 	} else if (strcasecmp(option, "hint-font") == 0) {
 		bool val = !parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->window.entry.harfbuzz.disable_hinting = val;
+			sofi->window.entry.harfbuzz.disable_hinting = val;
 		}
 	} else if (strcasecmp(option, "multi-instance") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->multiple_instance = val;
+			sofi->multiple_instance = val;
 		}
 	} else if (strcasecmp(option, "ascii-input") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->ascii_input = val;
+			sofi->ascii_input = val;
 		}
 	} else if (strcasecmp(option, "late-keyboard-init") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->late_keyboard_init = val;
+			sofi->late_keyboard_init = val;
 		}
 	} else if (strcasecmp(option, "output") == 0) {
-		snprintf(sorce->target_output_name, N_ELEM(sorce->target_output_name), "%s", value);
+		snprintf(sofi->target_output_name, N_ELEM(sofi->target_output_name), "%s", value);
 	} else if (strcasecmp(option, "scale") == 0) {
 		bool val = parse_bool(filename, lineno, value, &err);
 		if (!err) {
-			sorce->use_scale = val;
+			sofi->use_scale = val;
 		}
 	} else {
 		PARSE_ERROR(filename, lineno, "Unknown option \"%s\"\n", option);
@@ -773,9 +773,9 @@ bool parse_option(struct sorce *sorce, const char *filename, size_t lineno, cons
 	return !err;
 }
 
-bool config_apply(struct sorce *sorce, const char *option, const char *value)
+bool config_apply(struct sofi *sofi, const char *option, const char *value)
 {
-	return parse_option(sorce, "", 0, option, value);
+	return parse_option(sofi, "", 0, option, value);
 }
 
 uint32_t fixup_percentage(uint32_t value, uint32_t base, bool is_percent)
@@ -786,58 +786,58 @@ uint32_t fixup_percentage(uint32_t value, uint32_t base, bool is_percent)
 	return value;
 }
 
-void config_fixup_values(struct sorce *sorce)
+void config_fixup_values(struct sofi *sofi)
 {
-	uint32_t base_width = sorce->output_width;
-	uint32_t base_height = sorce->output_height;
+	uint32_t base_width = sofi->output_width;
+	uint32_t base_height = sofi->output_height;
 	uint32_t scale;
-	if (sorce->window.fractional_scale != 0) {
-		scale = sorce->window.fractional_scale;
+	if (sofi->window.fractional_scale != 0) {
+		scale = sofi->window.fractional_scale;
 	} else {
-		scale = sorce->window.scale * 120;
+		scale = sofi->window.scale * 120;
 	}
 
 	/*
 	 * If we're going to be scaling these values in Cairo,
 	 * we need to apply the inverse scale here.
 	 */
-	if (sorce->use_scale) {
+	if (sofi->use_scale) {
 		base_width = scale_apply_inverse(base_width, scale);
 		base_height = scale_apply_inverse(base_height, scale);
 	}
 
-	sorce->window.margin_top = fixup_percentage(
-			sorce->window.margin_top,
+	sofi->window.margin_top = fixup_percentage(
+			sofi->window.margin_top,
 			base_height,
-			sorce->window.margin_top_is_percent);
-	sorce->window.margin_bottom = fixup_percentage(
-			sorce->window.margin_bottom,
+			sofi->window.margin_top_is_percent);
+	sofi->window.margin_bottom = fixup_percentage(
+			sofi->window.margin_bottom,
 			base_height,
-			sorce->window.margin_bottom_is_percent);
-	sorce->window.margin_left = fixup_percentage(
-			sorce->window.margin_left,
+			sofi->window.margin_bottom_is_percent);
+	sofi->window.margin_left = fixup_percentage(
+			sofi->window.margin_left,
 			base_width,
-			sorce->window.margin_left_is_percent);
-	sorce->window.margin_right = fixup_percentage(
-			sorce->window.margin_right,
+			sofi->window.margin_left_is_percent);
+	sofi->window.margin_right = fixup_percentage(
+			sofi->window.margin_right,
 			base_width,
-			sorce->window.margin_right_is_percent);
-	sorce->window.entry.padding_top = fixup_percentage(
-			sorce->window.entry.padding_top,
+			sofi->window.margin_right_is_percent);
+	sofi->window.entry.padding_top = fixup_percentage(
+			sofi->window.entry.padding_top,
 			base_height,
-			sorce->window.entry.padding_top_is_percent);
-	sorce->window.entry.padding_bottom = fixup_percentage(
-			sorce->window.entry.padding_bottom,
+			sofi->window.entry.padding_top_is_percent);
+	sofi->window.entry.padding_bottom = fixup_percentage(
+			sofi->window.entry.padding_bottom,
 			base_height,
-			sorce->window.entry.padding_bottom_is_percent);
-	sorce->window.entry.padding_left = fixup_percentage(
-			sorce->window.entry.padding_left,
+			sofi->window.entry.padding_bottom_is_percent);
+	sofi->window.entry.padding_left = fixup_percentage(
+			sofi->window.entry.padding_left,
 			base_width,
-			sorce->window.entry.padding_left_is_percent);
-	sorce->window.entry.padding_right = fixup_percentage(
-			sorce->window.entry.padding_right,
+			sofi->window.entry.padding_left_is_percent);
+	sofi->window.entry.padding_right = fixup_percentage(
+			sofi->window.entry.padding_right,
 			base_width,
-			sorce->window.entry.padding_right_is_percent);
+			sofi->window.entry.padding_right_is_percent);
 
 	/*
 	 * Window width and height are a little special. We're only going to be
@@ -845,46 +845,46 @@ void config_fixup_values(struct sorce *sorce)
 	 * pixels, so always scale them here (unless we've directly specified a
 	 * scaled size).
 	 */
-	sorce->window.width = fixup_percentage(
-			sorce->window.width,
-			sorce->output_width,
-			sorce->window.width_is_percent);
-	sorce->window.height = fixup_percentage(
-			sorce->window.height,
-			sorce->output_height,
-			sorce->window.height_is_percent);
-	if (sorce->window.width_is_percent || !sorce->use_scale) {
-		sorce->window.width = scale_apply_inverse(sorce->window.width, scale);
+	sofi->window.width = fixup_percentage(
+			sofi->window.width,
+			sofi->output_width,
+			sofi->window.width_is_percent);
+	sofi->window.height = fixup_percentage(
+			sofi->window.height,
+			sofi->output_height,
+			sofi->window.height_is_percent);
+	if (sofi->window.width_is_percent || !sofi->use_scale) {
+		sofi->window.width = scale_apply_inverse(sofi->window.width, scale);
 	}
-	if (sorce->window.height_is_percent || !sorce->use_scale) {
-		sorce->window.height = scale_apply_inverse(sorce->window.height, scale);
+	if (sofi->window.height_is_percent || !sofi->use_scale) {
+		sofi->window.height = scale_apply_inverse(sofi->window.height, scale);
 	}
 
 	/* Don't attempt percentage handling if exclusive_zone is set to -1. */
-	if (sorce->window.exclusive_zone > 0) {
+	if (sofi->window.exclusive_zone > 0) {
 		/* Exclusive zone base depends on anchor. */
-		switch (sorce->anchor) {
+		switch (sofi->anchor) {
 			case ANCHOR_TOP:
 			case ANCHOR_BOTTOM:
-				sorce->window.exclusive_zone = fixup_percentage(
-						sorce->window.exclusive_zone,
+				sofi->window.exclusive_zone = fixup_percentage(
+						sofi->window.exclusive_zone,
 						base_height,
-						sorce->window.exclusive_zone_is_percent);
+						sofi->window.exclusive_zone_is_percent);
 				break;
 			case ANCHOR_LEFT:
 			case ANCHOR_RIGHT:
-				sorce->window.exclusive_zone = fixup_percentage(
-						sorce->window.exclusive_zone,
+				sofi->window.exclusive_zone = fixup_percentage(
+						sofi->window.exclusive_zone,
 						base_width,
-						sorce->window.exclusive_zone_is_percent);
+						sofi->window.exclusive_zone_is_percent);
 				break;
 			default:
 				/*
 				 * Exclusive zone >0 is meaningless for other
 				 * anchor positions.
 				 */
-				sorce->window.exclusive_zone =
-					MIN(sorce->window.exclusive_zone, 0);
+				sofi->window.exclusive_zone =
+					MIN(sofi->window.exclusive_zone, 0);
 				break;
 		}
 	}
@@ -894,7 +894,7 @@ char *get_config_path()
 {
 	char *base_dir = getenv("XDG_CONFIG_HOME");
 	char *ext = "";
-	size_t len = strlen("/sorce/config") + 1;
+	size_t len = strlen("/sofi/config") + 1;
 	if (!base_dir) {
 		base_dir = getenv("HOME");
 		ext = "/.config";
@@ -905,7 +905,7 @@ char *get_config_path()
 	}
 	len += strlen(base_dir) + strlen(ext) + 2;
 	char *name = xcalloc(len, sizeof(*name));
-	snprintf(name, len, "%s%s%s", base_dir, ext, "/sorce/config");
+	snprintf(name, len, "%s%s%s", base_dir, ext, "/sofi/config");
 	return name;
 }
 

@@ -14,8 +14,8 @@
 #define MAX_HISTFILE_SIZE (10*1024*1024)
 
 static const char *default_state_dir = ".local/state";
-static const char *histfile_basename = "sorce-history";
-static const char *drun_histfile_basename = "sorce-drun-history";
+static const char *histfile_basename = "sofi-history";
+static const char *drun_histfile_basename = "sofi-drun-history";
 
 [[nodiscard("memory leaked")]]
 static struct history history_create(void);

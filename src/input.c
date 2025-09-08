@@ -5,52 +5,52 @@
 #include "input.h"
 #include "log.h"
 #include "nelem.h"
-#include "sorce.h"
+#include "sofi.h"
 #include "unicode.h"
 
 
 static uint32_t keysym_to_key(xkb_keysym_t sym);
-static void add_character(struct sorce *sorce, xkb_keycode_t keycode);
-static void delete_character(struct sorce *sorce);
-static void delete_word(struct sorce *sorce);
-static void clear_input(struct sorce *sorce);
-static void paste(struct sorce *sorce);
-static void select_previous_result(struct sorce *sorce);
-static void select_next_result(struct sorce *sorce);
-static void select_previous_page(struct sorce *sorce);
-static void select_next_page(struct sorce *sorce);
-static void next_cursor_or_result(struct sorce *sorce);
-static void previous_cursor_or_result(struct sorce *sorce);
-static void reset_selection(struct sorce *sorce);
+static void add_character(struct sofi *sofi, xkb_keycode_t keycode);
+static void delete_character(struct sofi *sofi);
+static void delete_word(struct sofi *sofi);
+static void clear_input(struct sofi *sofi);
+static void paste(struct sofi *sofi);
+static void select_previous_result(struct sofi *sofi);
+static void select_next_result(struct sofi *sofi);
+static void select_previous_page(struct sofi *sofi);
+static void select_next_page(struct sofi *sofi);
+static void next_cursor_or_result(struct sofi *sofi);
+static void previous_cursor_or_result(struct sofi *sofi);
+static void reset_selection(struct sofi *sofi);
 
-void input_handle_keypress(struct sorce *sorce, xkb_keycode_t keycode)
+void input_handle_keypress(struct sofi *sofi, xkb_keycode_t keycode)
 {
-	if (sorce->xkb_state == NULL) {
+	if (sofi->xkb_state == NULL) {
 		return;
 	}
 
 	bool ctrl = xkb_state_mod_name_is_active(
-			sorce->xkb_state,
+			sofi->xkb_state,
 			XKB_MOD_NAME_CTRL,
 			XKB_STATE_MODS_EFFECTIVE);
 	bool alt = xkb_state_mod_name_is_active(
-			sorce->xkb_state,
+			sofi->xkb_state,
 			XKB_MOD_NAME_ALT,
 			XKB_STATE_MODS_EFFECTIVE);
 	bool shift = xkb_state_mod_name_is_active(
-			sorce->xkb_state,
+			sofi->xkb_state,
 			XKB_MOD_NAME_SHIFT,
 			XKB_STATE_MODS_EFFECTIVE);
 
-	uint32_t ch = xkb_state_key_get_utf32(sorce->xkb_state, keycode);
+	uint32_t ch = xkb_state_key_get_utf32(sofi->xkb_state, keycode);
 
 	/*
 	 * Use physical key code for shortcuts by default, ignoring layout
 	 * changes. Linux keycodes are 8 less than XKB keycodes.
 	 */
 	uint32_t key = keycode - 8;
-	if (!sorce->physical_keybindings) {
-		xkb_keysym_t sym = xkb_state_key_get_one_sym(sorce->xkb_state, keycode);
+	if (!sofi->physical_keybindings) {
+		xkb_keysym_t sym = xkb_state_key_get_one_sym(sofi->xkb_state, keycode);
 		key = keysym_to_key(sym);
 	}
 
@@ -59,54 +59,54 @@ void input_handle_keypress(struct sorce *sorce, xkb_keycode_t keycode)
 	 * for it explicitly.
 	 */
 	if (utf32_isprint(ch) && !ctrl && !alt) {
-		add_character(sorce, keycode);
+		add_character(sofi, keycode);
 	} else if ((key == KEY_BACKSPACE || key == KEY_W) && ctrl) {
-		delete_word(sorce);
+		delete_word(sofi);
 	} else if (key == KEY_BACKSPACE
 			|| (key == KEY_H && ctrl)) {
-		delete_character(sorce);
+		delete_character(sofi);
 	} else if (key == KEY_U && ctrl) {
-		clear_input(sorce);
+		clear_input(sofi);
 	} else if (key == KEY_V && ctrl) {
-		paste(sorce);
+		paste(sofi);
 	} else if (key == KEY_LEFT) {
-		previous_cursor_or_result(sorce);
+		previous_cursor_or_result(sofi);
 	} else if (key == KEY_RIGHT) {
-		next_cursor_or_result(sorce);
+		next_cursor_or_result(sofi);
 	} else if (key == KEY_UP
 			|| key == KEY_LEFT
 			|| (key == KEY_TAB && shift)
 			|| (key == KEY_H && alt)
 			|| ((key == KEY_K || key == KEY_P || key == KEY_B) && (ctrl || alt))) {
-		select_previous_result(sorce);
+		select_previous_result(sofi);
 	} else if (key == KEY_DOWN
 			|| key == KEY_RIGHT
 			|| key == KEY_TAB
 			|| (key == KEY_L && alt)
 			|| ((key == KEY_J || key == KEY_N || key == KEY_F) && (ctrl || alt))) {
-		select_next_result(sorce);
+		select_next_result(sofi);
 	} else if (key == KEY_HOME) {
-		reset_selection(sorce);
+		reset_selection(sofi);
 	} else if (key == KEY_PAGEUP) {
-		select_previous_page(sorce);
+		select_previous_page(sofi);
 	} else if (key == KEY_PAGEDOWN) {
-		select_next_page(sorce);
+		select_next_page(sofi);
 	} else if (key == KEY_ESC
 			|| ((key == KEY_C || key == KEY_LEFTBRACE || key == KEY_G) && ctrl)) {
-		sorce->closed = true;
+		sofi->closed = true;
 		return;
 	} else if (key == KEY_ENTER
 			|| key == KEY_KPENTER
 			|| (key == KEY_M && ctrl)) {
-		sorce->submit = true;
+		sofi->submit = true;
 		return;
 	}
 
-	if (sorce->auto_accept_single && sorce->window.entry.results.count == 1) {
-		sorce->submit = true;
+	if (sofi->auto_accept_single && sofi->window.entry.results.count == 1) {
+		sofi->submit = true;
 	}
 
-	sorce->window.surface.redraw = true;
+	sofi->window.surface.redraw = true;
 }
 
 static uint32_t keysym_to_key(xkb_keysym_t sym)
@@ -166,16 +166,16 @@ static uint32_t keysym_to_key(xkb_keysym_t sym)
 	return (uint32_t)-1;
 }
 
-void reset_selection(struct sorce *sorce)
+void reset_selection(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 	entry->selection = 0;
 	entry->first_result = 0;
 }
 
-void add_character(struct sorce *sorce, xkb_keycode_t keycode)
+void add_character(struct sofi *sofi, xkb_keycode_t keycode)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->input_utf32_length >= N_ELEM(entry->input_utf32) - 1) {
 		/* No more room for input */
@@ -184,7 +184,7 @@ void add_character(struct sorce *sorce, xkb_keycode_t keycode)
 
 	char buf[5]; /* 4 UTF-8 bytes plus null terminator. */
 	int len = xkb_state_key_get_utf8(
-			sorce->xkb_state,
+			sofi->xkb_state,
 			keycode,
 			buf,
 			sizeof(buf));
@@ -198,16 +198,16 @@ void add_character(struct sorce *sorce, xkb_keycode_t keycode)
 		entry->input_utf8_length += len;
 
 		if (entry->mode == TOFI_MODE_DRUN) {
-			struct string_ref_vec results = desktop_vec_filter(&entry->apps, entry->input_utf8, sorce->matching_algorithm);
+			struct string_ref_vec results = desktop_vec_filter(&entry->apps, entry->input_utf8, sofi->matching_algorithm);
 			string_ref_vec_destroy(&entry->results);
 			entry->results = results;
 		} else {
 			struct string_ref_vec tmp = entry->results;
-			entry->results = string_ref_vec_filter(&entry->results, entry->input_utf8, sorce->matching_algorithm);
+			entry->results = string_ref_vec_filter(&entry->results, entry->input_utf8, sofi->matching_algorithm);
 			string_ref_vec_destroy(&tmp);
 		}
 
-		reset_selection(sorce);
+		reset_selection(sofi);
 	} else {
 		for (size_t i = entry->input_utf32_length; i > entry->cursor_position; i--) {
 			entry->input_utf32[i] = entry->input_utf32[i - 1];
@@ -216,15 +216,15 @@ void add_character(struct sorce *sorce, xkb_keycode_t keycode)
 		entry->input_utf32_length++;
 		entry->input_utf32[entry->input_utf32_length] = U'\0';
 
-		input_refresh_results(sorce);
+		input_refresh_results(sofi);
 	}
 
 	entry->cursor_position++;
 }
 
-void input_refresh_results(struct sorce *sorce)
+void input_refresh_results(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	size_t bytes_written = 0;
 	for (size_t i = 0; i < entry->input_utf32_length; i++) {
@@ -236,17 +236,17 @@ void input_refresh_results(struct sorce *sorce)
 	entry->input_utf8_length = bytes_written;
 	string_ref_vec_destroy(&entry->results);
 	if (entry->mode == TOFI_MODE_DRUN) {
-		entry->results = desktop_vec_filter(&entry->apps, entry->input_utf8, sorce->matching_algorithm);
+		entry->results = desktop_vec_filter(&entry->apps, entry->input_utf8, sofi->matching_algorithm);
 	} else {
-		entry->results = string_ref_vec_filter(&entry->commands, entry->input_utf8, sorce->matching_algorithm);
+		entry->results = string_ref_vec_filter(&entry->commands, entry->input_utf8, sofi->matching_algorithm);
 	}
 
-	reset_selection(sorce);
+	reset_selection(sofi);
 }
 
-void delete_character(struct sorce *sorce)
+void delete_character(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->input_utf32_length == 0) {
 		/* No input to delete. */
@@ -268,12 +268,12 @@ void delete_character(struct sorce *sorce)
 		entry->input_utf32[entry->input_utf32_length] = U'\0';
 	}
 
-	input_refresh_results(sorce);
+	input_refresh_results(sofi);
 }
 
-void delete_word(struct sorce *sorce)
+void delete_word(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->cursor_position == 0) {
 		/* No input to delete. */
@@ -295,23 +295,23 @@ void delete_word(struct sorce *sorce)
 	entry->input_utf32[entry->input_utf32_length] = U'\0';
 
 	entry->cursor_position = new_cursor_pos;
-	input_refresh_results(sorce);
+	input_refresh_results(sofi);
 }
 
-void clear_input(struct sorce *sorce)
+void clear_input(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	entry->cursor_position = 0;
 	entry->input_utf32_length = 0;
 	entry->input_utf32[0] = U'\0';
 
-	input_refresh_results(sorce);
+	input_refresh_results(sofi);
 }
 
-void paste(struct sorce *sorce)
+void paste(struct sofi *sofi)
 {
-	if (sorce->clipboard.wl_data_offer == NULL || sorce->clipboard.mime_type == NULL) {
+	if (sofi->clipboard.wl_data_offer == NULL || sofi->clipboard.mime_type == NULL) {
 		return;
 	}
 
@@ -325,16 +325,16 @@ void paste(struct sorce *sorce)
 		log_error("Failed to open pipe for clipboard: %s\n", strerror(errno));
 		return;
 	}
-	wl_data_offer_receive(sorce->clipboard.wl_data_offer, sorce->clipboard.mime_type, fildes[1]);
+	wl_data_offer_receive(sofi->clipboard.wl_data_offer, sofi->clipboard.mime_type, fildes[1]);
 	close(fildes[1]);
 
 	/* Keep the read end for reading in the main loop. */
-	sorce->clipboard.fd = fildes[0];
+	sofi->clipboard.fd = fildes[0];
 }
 
-void select_previous_result(struct sorce *sorce)
+void select_previous_result(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->selection > 0) {
 		entry->selection--;
@@ -352,9 +352,9 @@ void select_previous_result(struct sorce *sorce)
 	}
 }
 
-void select_next_result(struct sorce *sorce)
+void select_next_result(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	uint32_t nsel = MAX(MIN(entry->num_results_drawn, entry->results.count), 1);
 
@@ -371,34 +371,34 @@ void select_next_result(struct sorce *sorce)
 	}
 }
 
-void previous_cursor_or_result(struct sorce *sorce)
+void previous_cursor_or_result(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->cursor_theme.show
 			&& entry->selection == 0
 			&& entry->cursor_position > 0) {
 		entry->cursor_position--;
 	} else {
-		select_previous_result(sorce);
+		select_previous_result(sofi);
 	}
 }
 
-void next_cursor_or_result(struct sorce *sorce)
+void next_cursor_or_result(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->cursor_theme.show
 			&& entry->cursor_position < entry->input_utf32_length) {
 		entry->cursor_position++;
 	} else {
-		select_next_result(sorce);
+		select_next_result(sofi);
 	}
 }
 
-void select_previous_page(struct sorce *sorce)
+void select_previous_page(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	if (entry->first_result >= entry->last_num_results_drawn) {
 		entry->first_result -= entry->last_num_results_drawn;
@@ -409,9 +409,9 @@ void select_previous_page(struct sorce *sorce)
 	entry->last_num_results_drawn = entry->num_results_drawn;
 }
 
-void select_next_page(struct sorce *sorce)
+void select_next_page(struct sofi *sofi)
 {
-	struct entry *entry = &sorce->window.entry;
+	struct entry *entry = &sofi->window.entry;
 
 	entry->first_result += entry->num_results_drawn;
 	if (entry->first_result >= entry->results.count) {

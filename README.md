@@ -1,4 +1,4 @@
-# Sorce
+# Sofi
 
 A unified app and file launcher for Wayland - an extremely fast [dmenu](https://tools.suckless.org/dmenu/) /
 [rofi](https://github.com/davatorium/rofi) replacement for
@@ -6,9 +6,9 @@ A unified app and file launcher for Wayland - an extremely fast [dmenu](https://
 [Wayland](https://wayland.freedesktop.org/) compositors such as
 [Sway](https://github.com/swaywm/sway/) and [Niri](https://github.com/YaLTeR/niri).
 
-Sorce extends the original tofi launcher with unified search capabilities, allowing you to search and launch both applications and files from a single interface.
+Sofi extends the original tofi launcher with unified search capabilities, allowing you to search and launch both applications and files from a single interface.
 
-When [configured correctly](#performance), sorce can get on screen within a
+When [configured correctly](#performance), sofi can get on screen within a
 single frame.
 
 ![](screenshot_fullscreen.png)
@@ -28,15 +28,15 @@ single frame.
 
 ### Quick Install (Arch Linux)
 
-The easiest way to install Sorce on Arch-based systems:
+The easiest way to install Sofi on Arch-based systems:
 
 ```bash
-git clone https://github.com/adsorce/sorce.git
-cd sorce
+git clone https://github.com/adsofi/sofi.git
+cd sofi
 ./install.sh
 ```
 
-This will automatically install dependencies, build, and install Sorce system-wide.
+This will automatically install dependencies, build, and install Sofi system-wide.
 
 ### Manual Building
 
@@ -76,47 +76,47 @@ meson build && ninja -C build install
 ```
 
 ### Arch
-Sorce is available in the [AUR](https://aur.archlinux.org/packages/sorce):
+Sofi is available in the [AUR](https://aur.archlinux.org/packages/sofi):
 ```sh
-paru -S sorce
+paru -S sofi
 ```
 
 ## Usage
 
-By default, running `sorce` causes it to act like dmenu, accepting options on
+By default, running `sofi` causes it to act like dmenu, accepting options on
 `stdin` and printing the selection to `stdout`.
 
-`sorce-run` is a symlink to `sorce`, which will cause sorce to display a list of
+`sofi-run` is a symlink to `sofi`, which will cause sofi to display a list of
 executables under the user's `$PATH`.
 
-`sorce-drun` is also a symlink to `sorce`, which will cause sorce to display a
+`sofi-drun` is also a symlink to `sofi`, which will cause sofi to display a
 list of applications found in desktop files as described by the [Desktop Entry
 Specification](https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html).
 
 To use as a launcher for Sway, add something similar to the following to your
 Sway config file:
 ```
-set $menu sorce-run | xargs swaymsg exec --
+set $menu sofi-run | xargs swaymsg exec --
 bindsym $mod+d exec $menu
 ```
 
-For `sorce-drun`, there are two possible methods:
+For `sofi-drun`, there are two possible methods:
 ```
 # Launch via Sway
-set $drun sorce-drun | xargs swaymsg exec --
+set $drun sofi-drun | xargs swaymsg exec --
 bindsym $mod+Shift+d exec $drun
 
 # Launch directly
-set $drun sorce-drun --drun-launch=true
+set $drun sofi-drun --drun-launch=true
 bindsym $mod+Shift+d exec $drun
 ```
 
-See the main [manpage](doc/sorce.1.md) for more info.
+See the main [manpage](doc/sofi.1.md) for more info.
 
 ### Theming
 
-Sorce supports a fair number of theming options - see the default [config
-file](doc/config) or the config file [manpage](doc/sorce.5.md) for a complete
+Sofi supports a fair number of theming options - see the default [config
+file](doc/config) or the config file [manpage](doc/sofi.5.md) for a complete
 description. Theming is based on the box model shown below:
 
 ![Default theme screenshot](screenshot_default.png)
@@ -160,14 +160,14 @@ tweak them to look correct on your display.
 
 ## Performance
 
-By default, sorce isn't really any faster than its alternatives. However, when
+By default, sofi isn't really any faster than its alternatives. However, when
 configured correctly, it can startup and get on screen within a single frame,
 or about 2ms in the ideal case.
 
 ### Options
 In roughly descending order, the most important options for performance are:
 
-* `--font` - This is *by far* the most important option. By default, sorce uses
+* `--font` - This is *by far* the most important option. By default, sofi uses
   [Pango](https://pango.gnome.org/) for font rendering, which (on Linux) looks
   up fonts via
   [Fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/).
@@ -177,7 +177,7 @@ In roughly descending order, the most important options for performance are:
   with Pango & Fontconfig takes ~120ms.
 
   The solution is to pass a path to a font file to `--font`, e.g. `--font
-  /usr/share/fonts/noto/NotoSansMono-Regular.ttf`. Sorce will then skip any font
+  /usr/share/fonts/noto/NotoSansMono-Regular.ttf`. Sofi will then skip any font
   searching, and use [Harfbuzz](https://harfbuzz.github.io/) and
   [Cairo](https://www.cairographics.org/) directly to load the font and display
   text. This massively speeds up startup (font loading takes <1ms). The (minor
@@ -190,7 +190,7 @@ In roughly descending order, the most important options for performance are:
   window (2880px × 1800px) takes ~20ms on the first frame, whereas a dmenu-like
   ribbon (2880px × 60px) takes ~1ms.
   
-* `--num-results` - By default, sorce auto-detects how many results will fit in
+* `--num-results` - By default, sofi auto-detects how many results will fit in
   the window. This is quite tricky when `--horizontal=true` is passed, and
   leads to a few ms slowdown (only in this case). Setting a fixed number of
   results will speed this up, but since this likely only applies to dmenu-like
@@ -210,7 +210,7 @@ In roughly descending order, the most important options for performance are:
 
 * `--ascii-input` - Proper Unicode handling is slower than plain ASCII - on the
   order of a few ms for ~40 kB of input. Specifying `--ascii-input true` will
-  disable some of this handling, speeding up sorce's startup, but searching for
+  disable some of this handling, speeding up sofi's startup, but searching for
   non-ASCII characters may not work properly.
 
 * `--late-keyboard-init` - The last avoidable thing that slows down startup is
@@ -222,11 +222,11 @@ In roughly descending order, the most important options for performance are:
 ### Benchmarks
 
 Below are some rough benchmarks of the included themes on different machines.
-These were generated with version 0.1.0 of sorce. The time shown is measured
+These were generated with version 0.1.0 of sofi. The time shown is measured
 from program launch to Sway reporting that the window has entered the screen.
 Results are the mean and standard deviation of 10 runs. All tests were
 performed with `--font /path/to/font/file.ttf`, `--hint-font false` and the
-equivalent of `--ascii-input true` (as sorce 0.1.0 didn't support Unicode text).
+equivalent of `--ascii-input true` (as sofi 0.1.0 didn't support Unicode text).
 
 <table>
   <thead>
@@ -318,11 +318,11 @@ question](https://stackoverflow.com/questions/73278608/can-mmaps-performance-be-
 if you want full details, but basically by setting
 `/sys/kernel/mm/transparent_hugepage/shmem_enabled` to `advise`, we can tell
 the kernel we're going to be working with large memory areas. This results in
-fewer page faults when first allocating memory, speeding up sorce.
+fewer page faults when first allocating memory, speeding up sofi.
 
 Note that I don't recommend you play with this unless you know what you're
 doing (I don't), but I've included it just in case, and to show that the
-slowdown on large screens is partially due to factors beyond sorce's control.
+slowdown on large screens is partially due to factors beyond sofi's control.
 
 The table below shows the effects of additionally enabling hugepages from the
 table above. The dmenu theme has been skipped, as the window it creates is too
@@ -362,13 +362,13 @@ support hugepages.
 ### Where is the time spent?
 
 For those who are interested in how much time there is even left to save, I've
-plotted the startup performance of version 0.8.0 of `sorce-run` below, alongside
+plotted the startup performance of version 0.8.0 of `sofi-run` below, alongside
 the corresponding debug output. This is the data from 1000 runs of the dmenu
 theme on a Ryzen 7 3700X machine, with all performance options set as mentioned
 above, along with `--num-results 10`. I've highlighted some points of interest,
-most of which are out of sorce's control.
+most of which are out of sofi's control.
 
-[![Startup performance plot](startup_performance.svg)](https://raw.githubusercontent.com/philj56/sorce/master/startup_performance.svg)
+[![Startup performance plot](startup_performance.svg)](https://raw.githubusercontent.com/philj56/sofi/master/startup_performance.svg)
 
 (You may want to click the image to see it at full size).
 
@@ -380,13 +380,13 @@ performance logging used slows down the code by roughly 10%.
 As you can see, there's not a huge amount of time that could even theoretically
 be saved. Somewhere around 50% of the startup time is simply spent waiting, and
 most of the code isn't parallelisable, as many steps depend on the result of
-previous steps. One idea would be to daemonize sorce, skipping much of this
+previous steps. One idea would be to daemonize sofi, skipping much of this
 startup. I don't want to do this, however, for two main reasons: complexity,
 and I think it's probably about fast enough already!
 
 ## Attribution
 
-Sorce is based on [tofi](https://github.com/philj56/tofi) by Philip Jones, originally released under the MIT License.
+Sofi is based on [tofi](https://github.com/philj56/tofi) by Philip Jones, originally released under the MIT License.
 
 ### Original MIT License
 
@@ -412,6 +412,6 @@ SOFTWARE.
 
 ### Modifications
 
-Copyright (c) 2024 [Your Name]
+Copyright (c) 2025 [Alex Dallas]
 
-The unified file search functionality and additional features were added by [Your Name].
+The unified file search functionality and additional features were added by [Alex Dallas].

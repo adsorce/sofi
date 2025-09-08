@@ -1,5 +1,5 @@
-# Sorce configuration file
-# Place this in ~/.config/sorce/config
+# Sofi configuration file
+# Place this in ~/.config/sofi/config
 
 # Window appearance
 width = 100%

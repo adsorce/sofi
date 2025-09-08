@@ -1,8 +1,8 @@
-pkgbase = sorce
+pkgbase = sofi
 	pkgdesc = A unified app and file launcher for Wayland
 	pkgver = 1.0.0
 	pkgrel = 1
-	url = https://github.com/adsorce/sorce
+	url = https://github.com/adsofi/sofi
 	arch = x86_64
 	license = MIT
 	makedepends = meson
@@ -15,7 +15,7 @@ pkgbase = sorce
 	depends = libxkbcommon
 	depends = pango
 	depends = wayland
-	source = sorce-1.0.0.tar.gz::https://github.com/adsorce/sorce/archive/v1.0.0.tar.gz
+	source = sofi-1.0.0.tar.gz::https://github.com/adsofi/sofi/archive/v1.0.0.tar.gz
 	sha256sums = SKIP
 
-pkgname = sorce
+pkgname = sofi
