@@ -1,0 +1,21 @@
+pkgbase = sorce
+	pkgdesc = A unified app and file launcher for Wayland
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/adsorce/sorce
+	arch = x86_64
+	license = MIT
+	makedepends = meson
+	makedepends = scdoc
+	makedepends = wayland-protocols
+	depends = cairo
+	depends = freetype2
+	depends = glib2
+	depends = harfbuzz
+	depends = libxkbcommon
+	depends = pango
+	depends = wayland
+	source = sorce-1.0.0.tar.gz::https://github.com/adsorce/sorce/archive/v1.0.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = sorce
