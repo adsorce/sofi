@@ -1,7 +1,7 @@
 # Maintainer: Alex <alex@example.com>
 
 pkgname=sofi
-pkgver=1.0.2
+pkgver=1.0.3
 pkgrel=1
 pkgdesc="A unified app and file launcher for Wayland"
 arch=('x86_64')
